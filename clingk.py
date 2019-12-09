@@ -299,11 +299,11 @@ class ClingKernel(Kernel):
                    user_expressions=None, allow_stdin=False):
         """Runs code in cling and handles input; returns the evaluation result."""
         codes = code.strip()
-        g = re.match(r'%(%|)(\w+)[ \t]*(.*\S)', codes)
+        g = re.match(r'%(%|)(\w+)(.*)', codes)
         if g:
             if g.group(1)=="%" and g.group(2)=="writefile":
-                fname = g.group(3)
-                body = codes[:g.end(3)].strip()
+                fname = g.group(3).strip()
+                body = codes[g.end():].strip()
                 try:
                     with open(fname,"w") as fw:
                         print(body, file=fw)
@@ -334,15 +334,16 @@ class ClingKernel(Kernel):
                         parent=self._parent_header
                     )
             elif g.group(1)=="%" and g.group(2)=="bash":
-                p = Popen(["bash","-"], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-                body = codes[:g.end(3)].strip()
+                p = Popen(["bash"], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+                body = codes[g.end():].strip()+'\n'
                 outs, errs = p.communicate(input=body)
                 self.session.send(
                     self.iopub_socket,
                     'execute_result',
                     content={
                         'data': {
-                            'text/html': '<p>'+html.escape(outs)+'</p><p style="color: red">'+html.escape(errs)+'</p>'
+                            'text/html': '<pre>'+html.escape(outs)+'</pre>'+
+                                         '<pre style="color: red">'+html.escape(errs)+'</pre>'
                         },
                         'metadata': {},
                         'execution_count': self.execution_count,
@@ -350,7 +351,7 @@ class ClingKernel(Kernel):
                     parent=self._parent_header
                 )
             else:
-                errs = 'Undefined magic'
+                errs = 'Undefined magic g1='+g.group(1)+" g2="+g.group(2)
                 self.session.send(
                     self.iopub_socket,
                     'execute_result',
