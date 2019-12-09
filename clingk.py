@@ -19,6 +19,8 @@ from __future__ import print_function
 
 __version__ = '0.0.3'
 
+import html
+from subprocess import Popen, PIPE
 import ctypes
 from contextlib import contextmanager
 from fcntl import fcntl, F_GETFL, F_SETFL
@@ -296,6 +298,77 @@ class ClingKernel(Kernel):
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False):
         """Runs code in cling and handles input; returns the evaluation result."""
+        codes = code.strip()
+        g = re.match(r'%(%|)(\w+)[ \t]*(.*\S)', codes)
+        if g:
+            if g.group(1)=="%" and g.group(2)=="writefile":
+                fname = g.group(3)
+                body = codes[:g.end(3)].strip()
+                try:
+                    with open(fname,"w") as fw:
+                        print(body, file=fw)
+                    self.session.send(
+                        self.iopub_socket,
+                        'execute_result',
+                        content={
+                            'data': {
+                                'text/plain': 'file written: '+fname
+                            },
+                            'metadata': {},
+                            'execution_count': self.execution_count,
+                        },
+                        parent=self._parent_header
+                    )
+                except Exception as e:
+                    emsg = "Write failed: "+str(e)
+                    self.session.send(
+                        self.iopub_socket,
+                        'execute_result',
+                        content={
+                            'data': {
+                                'text/html': '<p style="color: red">'+html.escape(emsg)+'</p>'
+                            },
+                            'metadata': {},
+                            'execution_count': self.execution_count,
+                        },
+                        parent=self._parent_header
+                    )
+            elif g.group(1)=="%" and g.group(2)=="bash":
+                p = Popen(["bash","-"], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+                body = codes[:g.end(3)].strip()
+                outs, errs = p.communicate(input=body)
+                self.session.send(
+                    self.iopub_socket,
+                    'execute_result',
+                    content={
+                        'data': {
+                            'text/html': '<p>'+html.escape(outs)+'</p><p style="color: red">'+html.escape(errs)+'</p>'
+                        },
+                        'metadata': {},
+                        'execution_count': self.execution_count,
+                    },
+                    parent=self._parent_header
+                )
+            else:
+                errs = 'Undefined magic'
+                self.session.send(
+                    self.iopub_socket,
+                    'execute_result',
+                    content={
+                        'data': {
+                            'text/html': '<p style="color: red">'+html.escape(errs)+'</p>'
+                        },
+                        'metadata': {},
+                        'execution_count': self.execution_count,
+                    },
+                    parent=self._parent_header
+                )
+            return {
+                'status' : 'ok',
+                'execution_count': self.execution_count,
+                'payload' : [],
+                'user_expressions' : {},
+            }
         if not code.strip():
             return {
                 'status': 'ok',
