@@ -1,5 +1,5 @@
 FROM fedora:27
-RUN dnf install -y gcc-c++ gcc make cmake git \
+RUN dnf install -y gcc-c++ gcc make git \
     bzip2 hwloc-devel blas blas-devel lapack lapack-devel boost-devel \
     libatomic which compat-openssl10 vim-enhanced wget zlib-devel \
     python3-flake8 gdb sudo python36 openmpi-devel sqlite-devel sqlite \
@@ -7,6 +7,13 @@ RUN dnf install -y gcc-c++ gcc make cmake git \
 
 ARG CPUS
 ARG BUILD_TYPE
+
+ENV CMAKE_VER 3.17.0
+RUN curl -LO http://www.cmake.org/files/v$(echo $CMAKE_VER|cut -d. -f1,2)/cmake-${CMAKE_VER}.tar.gz
+RUN tar xzf cmake-${CMAKE_VER}.tar.gz
+WORKDIR /cmake-${CMAKE_VER}
+RUN ./configure && make -j ${CPUS} && make install
+WORKDIR /
 
 WORKDIR /
 RUN git clone https://github.com/stevenrbrandt/CxxExplorer.git
