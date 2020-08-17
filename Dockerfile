@@ -169,5 +169,6 @@ RUN cp /CxxExplorer/startup.sh startup.sh
 RUN cp /CxxExplorer/jup-config.py jup-config.py
 
 RUN cp /CxxExplorer/Dockerfile /Dockerfile
-#CMD bash startup.sh
-CMD bash /CxxExplorer/notebk.sh
+CMD bash startup.sh
+COPY jup-config.py jup-config.py
+#CMD bash /CxxExplorer/notebk.sh

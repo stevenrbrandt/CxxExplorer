@@ -1,7 +1,24 @@
 import os
+from tornado import web
 
 if "OAUTH" in os.environ and os.environ["OAUTH"] == "yes":
-    c.JupyterHub.authenticator_class = 'jupyterhub.auth.GitHubOAuthenticator'
+    from oauthenticator.github import GitHubOAuthenticator
+
+    class MyGitHubOAuthenticator(GitHubOAuthenticator):
+        async def authenticate(self, handler, data=None):
+          userdict = await super().authenticate(handler, data)
+          allowed_users = "/home/allowed_users.txt"
+          users = set()
+          if os.path.exists(allowed_users):
+              with open(allowed_users, "r") as fd:
+                  for user in fd.readlines():
+                      users.add(user.strip())
+          if userdict["name"] in users:
+              return userdict
+          else:
+              raise web.HTTPError(403, "User '%s' has not been given access. Please request it from your instructor." % userdict['name'])
+
+    c.JupyterHub.authenticator_class = MyGitHubOAuthenticator
 else:
     c.JupyterHub.authenticator_class = 'jupyterhub.auth.LocalAuthenticator'
 c.JupyterHub.log_level = 'DEBUG'
@@ -30,16 +47,16 @@ c.JupyterHub.base_url = '/hpx/'
 #c.JupyterHub.authenticator_class = GoogleOAuthenticator
 c.NotebookApp.terminado_settings = { 'shell_command': 'bash' }
 
+def pre_spawn_hook(spawner):
+    import mkuser
+    print("Running pre-spawn hook")
+    print("User:",spawner.user.name)
+    mkuser.mkuser(spawner.user.name)
+
 # Configure to use Github Auth
 if "OAUTH" in os.environ and os.environ["OAUTH"] == "yes":
-    c.LocalAuthenticator.create_system_users = True
-    c.LocalAuthenticator.add_user_cmd = ['/usr/local/bin/mkuser','USERNAME']
+    #c.Authenticator.create_system_users = True
+    #c.Authenticator.add_user_cmd = ['/usr/local/bin/mkuser','USERNAME']
     c.Authenticator.blacklist = set()
     c.Authenticator.admin_users = set(['stevenrbrandt'])
-    c.MyOAuthenticator.client_id = '9c4793b7d0f3e3584939'
-    c.MyOAuthenticator.client_secret = 'b3d5f7c888c6b1a31d5be4af39db2011165e764a'
-    c.MyOAuthenticator.oauth_callback_url = 'https://tutorial.cct.lsu.edu/hpx/hub/oauth_callback'
-    #c.MyOAuthenticator.oauth_callback_uri = 'https://tutorial.cct.lsu.edu/hpx/hub/oauth_callback'
-
-    from oauthenticator.github import GitHubOAuthenticator
-    c.JupyterHub.authenticator_class = GitHubOAuthenticator
+    c.Spawner.pre_spawn_hook = pre_spawn_hook
