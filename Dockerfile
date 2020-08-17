@@ -165,10 +165,14 @@ RUN cp /CxxExplorer/notebk.sh ./
 
 WORKDIR /root
 RUN chmod 755 .
+RUN (cd /CxxExplorer && git pull)
 RUN cp /CxxExplorer/startup.sh startup.sh
 RUN cp /CxxExplorer/jup-config.py jup-config.py
 
 RUN cp /CxxExplorer/Dockerfile /Dockerfile
-CMD bash startup.sh
 COPY jup-config.py jup-config.py
-#CMD bash /CxxExplorer/notebk.sh
+
+# Use this CMD for a jupyterhub
+#CMD bash startup.sh
+
+CMD bash /CxxExplorer/notebk.sh

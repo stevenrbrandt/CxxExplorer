@@ -1,5 +1,6 @@
 #/usr/sbin/sshd 
 #export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/tutorial.cct.lsu.edu_intermediate.cer
+set -x
 export PORT=80
 export OAUTH=yes
 if [ "$OAUTH" = "yes" ]
