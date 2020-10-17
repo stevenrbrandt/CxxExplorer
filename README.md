@@ -42,18 +42,27 @@ services:
     environment:
       - "PORT=443"
       
-      # Normally, only github users whose names
+      # Option 1: Use GitHubOAuth. To run the
+      # server this way, fill in these variables
+      # - "OAUTH_CLIENT_ID=..."
+      # - "OAUTH_CLIENT_SECRET=..."
+      # - "OAUTH_CALLBACK_URL=..."
+      
+      # Option 2: Use the Create Your Own Login (CYOL)
+      # Authenticator. This will happen if the above
+      # variables are not set.
+      
+      # With Ooption 1, only github users whose names
       # appear in /home/allowed_users.txt are
       # permitted to login.
       # If you set a CODE, then any user with
       # that code can add themselves to the allowed
       # users list.
-      - "CODE=frog"
       
-      # To use GitHubOAuth, fill in these variables
-      # - "OAUTH_CLIENT_ID=..."
-      # - "OAUTH_CLIENT_SECRET=..."
-      # - "OAUTH_CALLBACK_URL=..."
+      # With Option 2:, the CODE enables users to
+      # select and create their own login name and
+      # password.
+      - "CODE=frog"
 
     ports:
       - "8004:443"
