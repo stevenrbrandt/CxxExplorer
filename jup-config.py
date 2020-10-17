@@ -1,5 +1,6 @@
 import os
 from tornado import web
+from time import sleep
 
 #c.JupyterHub.default_url = '/home'
 
@@ -31,6 +32,8 @@ if "OAUTH_CLIENT_ID" in os.environ:
                   with open(allowed_users, "a") as fd:
                       print(userdict["name"], file=fd)
                       users.add(userdict["name"])
+              else:
+                  sleep(10)
           if userdict["name"] in users:
               return userdict
           elif enable_mkuser:
