@@ -16,8 +16,6 @@ services:
     image: stevenrbrandt/cxxex
     container_name: cxxex
     user: jovyan
-    #user: root
-    #entrypoint: bash /root/startup.sh
     environment:
       - "PORT=80"
         # Please edit this line
