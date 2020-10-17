@@ -1,26 +1,49 @@
 import os
 from tornado import web
 
-if "OAUTH" in os.environ and os.environ["OAUTH"] == "yes":
+#c.JupyterHub.default_url = '/home'
+
+if "OAUTH_CLIENT_ID" in os.environ:
     from oauthenticator.github import GitHubOAuthenticator
 
     class MyGitHubOAuthenticator(GitHubOAuthenticator):
         async def authenticate(self, handler, data=None):
-          userdict = await super().authenticate(handler, data)
+          if data is None:
+            userdict = await super().authenticate(handler, data)
+            data = {}
+            with open("/tmp/log.txt", "a") as fd:
+                print("git:",userdict, file=fd)
+          else:
+            userdict = { "name":data["username"] }
+            with open("/tmp/log.txt", "a") as fd:
+                print("nogit:",data, file=fd)
           allowed_users = "/home/allowed_users.txt"
           users = set()
           if os.path.exists(allowed_users):
               with open(allowed_users, "r") as fd:
                   for user in fd.readlines():
                       users.add(user.strip())
+          enable_mkuser = os.path.exists("/usr/enable_mkuser")
+          if "code" in data and userdict["name"] not in users and enable_mkuser:
+              with open("/usr/enable_mkuser", "r") as fd:
+                  code = fd.read().strip()
+              if data["code"] == code:
+                  with open(allowed_users, "a") as fd:
+                      print(userdict["name"], file=fd)
+                      users.add(userdict["name"])
           if userdict["name"] in users:
               return userdict
+          elif enable_mkuser:
+              e = web.HTTPError(403, "User '%s' does not have access. Please request with a code below." % userdict['name'])
+              e.my_message = 'Login'
+              e.user = userdict["name"]
+              raise e
           else:
               raise web.HTTPError(403, "User '%s' has not been given access. Please request it from your instructor." % userdict['name'])
 
     c.JupyterHub.authenticator_class = MyGitHubOAuthenticator
 else:
-    c.JupyterHub.authenticator_class = 'jupyterhub.auth.LocalAuthenticator'
+    c.JupyterHub.authenticator_class = 'cyolauthenticator.CYOLAuthenticator'
 c.JupyterHub.log_level = 'DEBUG'
 c.Spawner.debug = True
 c.LocalProcessSpawner.debug = True
@@ -38,7 +61,8 @@ if os.environ["PORT"] == "443":
     c.JupyterHub.ssl_key =  '/etc/pki/tls/private/tutorial.cct.lsu.edu.key'
 #c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/melete05.cct.lsu.edu_bundle.cer'
 #c.JupyterHub.ssl_key =  '/etc/pki/tls/private/melete05.cct.lsu.edu.key'
-c.JupyterHub.base_url = '/hpx/'
+if 'BASE_URL' in os.environ:
+    c.JupyterHub.base_url = os.environ['BASE_URL'] #'/hpx/'
 #c.Spawner.args = ['--NotebookApp.allow_origin=*']
 #c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/tutorial.cct.lsu.edu.cer'
 #c.JupyterHub.ssl_key =  '/etc/pki/tls/private/tutorial.cct.lsu.edu.key'
@@ -54,7 +78,7 @@ def pre_spawn_hook(spawner):
     mkuser.mkuser(spawner.user.name)
 
 # Configure to use Github Auth
-if "OAUTH" in os.environ and os.environ["OAUTH"] == "yes":
+if "OAUTH_CLIENT_ID" in os.environ:
     #c.Authenticator.create_system_users = True
     #c.Authenticator.add_user_cmd = ['/usr/local/bin/mkuser','USERNAME']
     c.Authenticator.blacklist = set()

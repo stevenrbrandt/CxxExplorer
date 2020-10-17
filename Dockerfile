@@ -1,19 +1,12 @@
-FROM fedora:27
+FROM fedora:32
 RUN dnf install -y gcc-c++ gcc make git \
     bzip2 hwloc-devel blas blas-devel lapack lapack-devel boost-devel \
     libatomic which compat-openssl10 vim-enhanced wget zlib-devel \
     python3-flake8 gdb sudo python36 openmpi-devel sqlite-devel sqlite \
-    findutils openssl-devel papi papi-devel lm_sensors-devel
+    findutils openssl-devel papi papi-devel lm_sensors-devel tbb-devel cmake
 
 ARG CPUS
 ARG BUILD_TYPE
-
-ENV CMAKE_VER 3.17.0
-RUN curl -LO http://www.cmake.org/files/v$(echo $CMAKE_VER|cut -d. -f1,2)/cmake-${CMAKE_VER}.tar.gz
-RUN tar xzf cmake-${CMAKE_VER}.tar.gz
-WORKDIR /cmake-${CMAKE_VER}
-RUN ./configure && make -j ${CPUS} && make install
-WORKDIR /
 
 WORKDIR /
 RUN git clone https://github.com/stevenrbrandt/CxxExplorer.git
@@ -51,27 +44,23 @@ RUN pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org n
 RUN pip3 install numpy tensorflow keras CNTK pytest
 WORKDIR /
 
-RUN git clone --depth 1 https://github.com/STEllAR-GROUP/hpx.git && \
-    mkdir -p /hpx/build && \
-    cd /hpx/build && \
-    cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+RUN git clone https://github.com/STEllAR-GROUP/hpx.git
+WORKDIR /hpx
+RUN mkdir -p /hpx/build
+WORKDIR /hpx/build
+RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DHPX_WITH_BUILTIN_INTEGER_PACK=Off \
+      -DHPX_WITH_ITTNOTIFY=OFF \
+      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
       -DHPX_WITH_MALLOC=system \
       -DHPX_WITH_MORE_THAN_64_THREADS=ON \
       -DHPX_WITH_MAX_CPU_COUNT=80 \
       -DHPX_WITH_EXAMPLES=Off \
-      -DHPX_WITH_APEX=TRUE \
-      -DAPEX_WITH_ACTIVEHARMONY=TRUE \
-      -DACTIVEHARMONY_ROOT=/usr/local/activeharmony \
-      -DAPEX_WITH_OTF2=TRUE \
-      -DOTF2_ROOT=/usr/local/otf2 \
-      -DAPEX_WITH_PAPI=TRUE \
-      -DHPX_WITH_APEX_NO_UPDATE=TRUE \
-      -DHPX_WITH_APEX_TAG=develop \
-      -DAPEX_WITH_BFD=FALSE \
       .. && \
     make -j ${CPUS} install && \
     rm -f $(find . -name \*.o)
 
+WORKDIR /
 RUN git clone --depth 1 https://github.com/pybind/pybind11.git && \
     mkdir -p /pybind11/build && \
     cd /pybind11/build && \
@@ -122,14 +111,23 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
   -DCMAKE_CXX_FLAGS='-Wl,-s' \
   -DLLVM_ENABLE_RTTI=ON \
   -DLLVM_ENABLE_EH=ON \
-  /usr/install/cling/src && \
-  (make -j 4 install | tee make.out) && \
-  cd /usr/install/cling/src/tools/cling/tools/Jupyter/kernel && \
+  /usr/install/cling/src
+RUN dnf install -y patch
+WORKDIR /usr/install/cling/src
+COPY char.patch ./
+RUN patch -p1 < char.patch
+WORKDIR /usr/install/cling/src/tools/cling
+COPY noexcept.patch ./
+RUN patch -p1 < noexcept.patch
+WORKDIR /usr/install/cling/src/build
+RUN make -j 8 install 2>&1 | tee make.out
+RUN  cd /usr/install/cling/src/tools/cling/tools/Jupyter/kernel && \
   pip3 install -e . && \
   jupyter-kernelspec install cling-cpp14 && \
   jupyter-kernelspec install cling-cpp17 && \
   npm install -g configurable-http-proxy 
 
+RUN (make -j 8 install 2>&1 | tee make.out)
 RUN cp /CxxExplorer/run_hpx.cpp /usr/include/run_hpx.cpp
 RUN chmod 644 /usr/include/run_hpx.cpp
 
@@ -168,11 +166,20 @@ RUN chmod 755 .
 RUN (cd /CxxExplorer && git pull)
 RUN cp /CxxExplorer/startup.sh startup.sh
 RUN cp /CxxExplorer/jup-config.py jup-config.py
-
 RUN cp /CxxExplorer/Dockerfile /Dockerfile
-COPY jup-config.py jup-config.py
+
+COPY startup.sh .
+COPY jup-config.py .
+COPY login.html .
+COPY error.html .
+
+# For authentication if we aren't using OAuth
+RUN echo
+RUN git clone https://github.com/stevenrbrandt/cyolauthenticator.git
+RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
 
 # Use this CMD for a jupyterhub
-#CMD bash startup.sh
+# CMD bash startup.sh
 
+WORKDIR /home/jovyan
 CMD bash /CxxExplorer/notebk.sh

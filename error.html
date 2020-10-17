@@ -1,0 +1,118 @@
+{% extends "page.html" %}
+
+{% block login_widget %}
+{% endblock %}
+
+{% block main %}
+
+<div class="error">
+  {% block h1_error %}
+  <h1>
+    {{status_code}} : {{status_message}}
+  </h1>
+  {% if exception and exception.my_message %}
+   <h2>{{ exception.my_message }}</h2>
+  {% endif %}
+  {% endblock h1_error %}
+  {% block error_detail %}
+  {% if message %}
+  <p>
+    {{message}}
+  </p>
+  {% endif %}
+  {% if message_html %}
+  <p>
+    {{message_html | safe}}
+  </p>
+  {% endif %}
+  {% if extra_error_html %}
+  <p>
+    {{extra_error_html | safe}}
+  </p>
+  {% endif %}
+  {% endblock error_detail %}
+   <!--xxx-->
+   {% if exception.my_message == 'Login' %}
+<form action="{{login_url}}?next=/BASE_URL/hub/home" method="post" role="form">
+  <div class="auth-form-header">
+    Sign in
+  </div>
+  <div class='auth-form-body'>
+
+    <p id='insecure-login-warning' class='hidden'>
+    Warning: JupyterHub seems to be served over an unsecured HTTP connection.
+    We strongly recommend enabling HTTPS for JupyterHub.
+    </p>
+
+    {% if login_error %}
+    <p class="login_error">
+      {{login_error}}
+    </p>
+    {% endif %}
+    <label for="username_input">Username:</label>
+    <input
+      id="username_input"
+      type="hidden"
+      autocapitalize="off"
+      autocorrect="off"
+      class="form-control"
+      name="username"
+      value="{{ exception.user }}"
+      val="{{ exception.user }}"
+      tabindex="1"
+      autofocus="autofocus"
+    /> {{exception.user}} <br />
+    <label for='password_input'>Code:</label>
+    <input
+      type="password"
+      class="form-control"
+      name="code"
+      id="code_input"
+      tabindex="2"
+    />
+
+    <input
+      type="submit"
+      id="login_submit"
+      class='btn btn-jupyter'
+      value='Sign In'
+      tabindex="3"
+    />
+  </div>
+</form>
+   {% endif %}
+   <!--xxx-->
+</div>
+
+{% endblock %}
+
+{% block script %}
+  {{super()}}
+
+  <script type="text/javascript">
+    function _remove_redirects_from_url() {
+      if (window.location.search.length <= 1) {
+        return;
+      }
+      var search_parameters = window.location.search.slice(1).split('&');
+      for (var i = 0; i < search_parameters.length; i++) {
+        if (search_parameters[i].split('=')[0] === 'redirects') {
+          // remote redirects from search parameters
+          search_parameters.splice(i, 1);
+          var new_search = '';
+          if (search_parameters.length) {
+            new_search = '?' + search_parameters.join('&');
+          }
+          var new_url = window.location.origin +
+                        window.location.pathname +
+                        new_search +
+                        window.location.hash;
+          window.history.replaceState({}, "", new_url);
+          return;
+        }
+      }
+    }
+
+    _remove_redirects_from_url();
+  </script>
+{% endblock %}
