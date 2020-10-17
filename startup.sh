@@ -14,13 +14,17 @@ then
     source /env/env.sh
 fi
 
-# Establish the code needed to create a user
+# Create the codefile needed to allow
+# user self-authorization.
 if [ "$CODE" != "" ]
 then
     echo $CODE > /usr/enable_mkuser
 fi
 
 # Re-create all existing users with the correct id
+# Needed if one mounts a persistent /home because
+# /etc/passwd cannot easily be mounted. So all user
+# data is normally lost on reboot.
 for h in /home/*
 do
   if [ -r $h/.bashrc ]
@@ -29,6 +33,8 @@ do
   fi
 done
 
+# If this JupyterHub is not setup for GitHubOAuth, then
+# it will instead use the Create Your Own Login Authenticator.
 if [ "$OAUTH_CLIENT_ID" = "" ]
 then
   echo Using invent your own password auth...
@@ -47,4 +53,6 @@ else
   cp /root/login.html /usr/local/share/jupyterhub/templates
   echo Using GitHub OAuth...
 fi
+
+# Start the server.
 jupyterhub --ip 0.0.0.0 --port $PORT -f jup-config.py

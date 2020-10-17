@@ -2,8 +2,6 @@ import os
 from tornado import web
 from time import sleep
 
-#c.JupyterHub.default_url = '/home'
-
 if "OAUTH_CLIENT_ID" in os.environ:
     from oauthenticator.github import GitHubOAuthenticator
 
@@ -50,28 +48,15 @@ else:
 c.JupyterHub.log_level = 'DEBUG'
 c.Spawner.debug = True
 c.LocalProcessSpawner.debug = True
-#c.JupyterHub.authenticator_class = 'jupyterhub.auth.LocalAuthenticator'
-#c.JupyterHub.ssl_cert = '/etc/pki/tls/cert.pem'
-#c.JupyterHub.ssl_key  = '/etc/pki/tls/private/jupyter.cct.lsu.edu.key'
 
-# openssl genrsa -out rootCA.key 2048
-# openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 1024 -out rootCA.pem
-
-#c.JupyterHub.ssl_cert = '/root/rootCA.pem'
-#c.JupyterHub.ssl_key = '/root/rootCA.key'
+# If the port is set to 443, a key & cert should be mounted in the container.
 if os.environ["PORT"] == "443":
     c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/tutorial.cct.lsu.edu.cer'
     c.JupyterHub.ssl_key =  '/etc/pki/tls/private/tutorial.cct.lsu.edu.key'
-#c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/melete05.cct.lsu.edu_bundle.cer'
-#c.JupyterHub.ssl_key =  '/etc/pki/tls/private/melete05.cct.lsu.edu.key'
+
 if 'BASE_URL' in os.environ:
     c.JupyterHub.base_url = os.environ['BASE_URL'] #'/hpx/'
-#c.Spawner.args = ['--NotebookApp.allow_origin=*']
-#c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/tutorial.cct.lsu.edu.cer'
-#c.JupyterHub.ssl_key =  '/etc/pki/tls/private/tutorial.cct.lsu.edu.key'
 
-#from oauthenticator.google import GoogleOAuthenticator
-#c.JupyterHub.authenticator_class = GoogleOAuthenticator
 c.NotebookApp.terminado_settings = { 'shell_command': 'bash' }
 
 def pre_spawn_hook(spawner):
@@ -82,8 +67,4 @@ def pre_spawn_hook(spawner):
 
 # Configure to use Github Auth
 if "OAUTH_CLIENT_ID" in os.environ:
-    #c.Authenticator.create_system_users = True
-    #c.Authenticator.add_user_cmd = ['/usr/local/bin/mkuser','USERNAME']
-    c.Authenticator.blacklist = set()
-    c.Authenticator.admin_users = set(['stevenrbrandt'])
     c.Spawner.pre_spawn_hook = pre_spawn_hook
