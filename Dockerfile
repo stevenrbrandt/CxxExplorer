@@ -182,4 +182,7 @@ RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
 # CMD bash startup.sh
 
 WORKDIR /home/jovyan
+# Probably I should switch to using copy rather than
+# checking out the repo in the start of the Dockerfile
+COPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkernel.py
 CMD bash /CxxExplorer/notebk.sh

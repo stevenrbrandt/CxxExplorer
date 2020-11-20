@@ -26,6 +26,7 @@ from contextlib import contextmanager
 from fcntl import fcntl, F_GETFL, F_SETFL
 import re
 import os
+import pwd
 import shutil
 import select
 import struct
@@ -39,6 +40,19 @@ from ipykernel.ipkernel import IPythonKernel
 from ipykernel.zmqshell import ZMQInteractiveShell
 from IPython.core.profiledir import ProfileDir
 from jupyter_client.session import Session
+
+# Expand out ~/ and ~name/
+def fnorm(fname):
+  g = re.match(r'~(\w*)/', fname)
+  if g:
+    if g.group(1)=="":
+      hdir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
+    else:
+      hdir = pwd.getpwnam(g.group(1)).pw_dir
+    hdir = re.sub(r'/*$', '/', hdir)
+    return hdir+fname[g.end():]
+  else:
+    return fname
 
 
 class my_void_p(ctypes.c_void_p):
@@ -333,6 +347,27 @@ class ClingKernel(Kernel):
                         },
                         parent=self._parent_header
                     )
+            elif g.group(1)=="" and g.group(2)=="load":
+                fname = fnorm(g.group(3).strip())
+                try:
+                    content = open(fname, "r").read()
+                except Exception as e:
+                    # There's probably a better way
+                    # to do this.
+                    content = str(e)
+
+                data = {
+                    'status':'ok',
+                    'execution_count':self.execution_count,
+                    'payload': [{
+                      'source': 'set_next_input',
+                      'replace': True,
+                      'text':'%%writefile '+fname+'\n'+re.sub(r'\n$','',content)
+                    }],
+                    'user_expressions':{}
+                }
+                return data
+
             elif g.group(1)=="%" and g.group(2)=="bash":
                 p = Popen(["bash"], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
                 body = codes[g.end():].strip()+'\n'
