@@ -1,6 +1,9 @@
 import ctypes, os, sys, re
 from signal import *
 
+class my_void_p(ctypes.c_void_p):
+  pass
+
 def clearout(sig,frame):
     sys.stdout.write("$delim$$end$")
     sys.stdout.flush()
@@ -46,6 +49,8 @@ class cling:
         CharPtrArrayType = ctypes.c_char_p * argc
         llvmResourceDirCP = ctypes.c_char_p("/usr".encode('utf8'))
         sideband_pipe, pipe_in = os.pipe()
+        self.clingJupyter.cling_create.restype = my_void_p
+        self.clingJupyter.cling_eval.restype = my_void_p
         self.interp = self.clingJupyter.cling_create(
             ctypes.c_int(argc), CharPtrArrayType(*argv), llvmResourceDirCP, pipe_in)
 
@@ -75,13 +80,14 @@ def readinp(inp):
             inbuf = parts[0].strip()+'\n'
             return inbuf
 
-if len(sys.argv) > 2:
-    cl.run_cmd("#include <foo.cpp>")
-    #cl.run_cmd(".L x.cpp")
-    #cl.run_cmd("a")
-    #cl.run_cmd("int fut = run_hpx([]()->int{ return 4; });")
-    cl.run_cmd('auto b = fun([](){ return 42; });')
-else:
-    while True:
-        inbuf = readinp(sys.stdin) 
-        cl.run_cmd(inbuf)
+if __name__ == "__main__":
+    if len(sys.argv) > 2:
+        cl.run_cmd("#include <foo.cpp>")
+        #cl.run_cmd(".L x.cpp")
+        #cl.run_cmd("a")
+        #cl.run_cmd("int fut = run_hpx([]()->int{ return 4; });")
+        cl.run_cmd('auto b = fun([](){ return 42; });')
+    else:
+        while True:
+            inbuf = readinp(sys.stdin) 
+            cl.run_cmd(inbuf)

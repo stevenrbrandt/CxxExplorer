@@ -201,6 +201,11 @@ def gettype(ty):
     elif type(ty) == str:
         print(ty)
         raise Exception("?")
+    elif type(ty) == ast.Constant:
+        if ty.value is None:
+            return "void"
+        else:
+            raise Exception()
     else:
         print(ty.func.id)
         print(ty.args,"//",dir(ty.args[0]))
@@ -477,7 +482,7 @@ class py11:
 
             with open(fname, "w") as fd:
                 fd.write(src)
-            cmd="g++ {flags} -I{python_header} -I{pybind11_header} -rdynamic -fPIC -shared -o {base}.so {fname}".format(base=base,python_header=python_header,pybind11_header=pybind11_header,flags=flags,fname=fname)
+            cmd="c++ {flags} -I{python_header} -I{pybind11_header} -rdynamic -fPIC -shared -o {base}.so {fname}".format(base=base,python_header=python_header,pybind11_header=pybind11_header,flags=flags,fname=fname)
             r = 0
             try:
                 print(cmd)

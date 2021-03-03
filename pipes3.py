@@ -2,9 +2,10 @@ from subprocess import *
 import sys, os
 
 def init_cling():
+    import pipes1
     return Popen([
             "python3",
-            "/usr/local/lib/python3.6/site-packages/pipes1.py"
+            pipes1.__file__
         ],
         #bufsize=0,
         stdout=PIPE,

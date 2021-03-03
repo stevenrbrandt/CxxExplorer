@@ -1,5 +1,6 @@
 import pipes3
 
+from traceback import print_exc
 from IPython.core.magic import register_cell_magic
 from IPython.display import display, HTML
 import html
@@ -52,7 +53,7 @@ def cling(line, code):
     elif line != line2:
         pinterp = pipes3.init_cling()
     try:
-        caller = inspect.stack()[2][0].f_globals
+        caller = inspect.stack()[-1][0].f_globals
         code = replvar(code, caller)
         history += [code]
         pinterp.stdin.write(code+"$delim$\n")
@@ -73,4 +74,4 @@ def cling(line, code):
         if line2 is not None:
             caller[line2.strip()] = res
     except Exception as e:
-        print(e)
+        print_exc()
