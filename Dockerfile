@@ -49,7 +49,7 @@ RUN ln -s /usr/lib64/openmpi/lib/libmpi.so /usr/lib64/openmpi/lib/libmpi.so.12
 #RUN pip3 install numpy tensorflow keras CNTK pytest
 WORKDIR /
 
-RUN git clone https://github.com/STEllAR-GROUP/hpx.git
+RUN git clone -b 1.6.0 https://github.com/STEllAR-GROUP/hpx.git
 WORKDIR /hpx
 RUN mkdir -p /hpx/build
 WORKDIR /hpx/build
@@ -121,8 +121,8 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
   /usr/install/cling/src
 RUN dnf install -y patch
 WORKDIR /usr/install/cling/src
-COPY char.patch ./
-RUN patch -p1 < char.patch
+# COPY char.patch ./
+# RUN patch -p1 < char.patch
 WORKDIR /usr/install/cling/src/tools/cling
 COPY noexcept.patch ./
 RUN patch -p1 < noexcept.patch
@@ -184,9 +184,9 @@ RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
 # Use this CMD for a jupyterhub
 # CMD bash startup.sh
 
-WORKDIR /home/jovyan
-# Probably I should switch to using copy rather than
-# checking out the repo in the start of the Dockerfile
 COPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkernel.py
 RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
-CMD bash /CxxExplorer/notebk.sh
+USER jovyan
+WORKDIR /home/jovyan
+COPY notebooks .
+CMD bash /notebooks/notebk.sh
