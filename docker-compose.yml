@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+
+  cxxex-workspace:
+    # Download the full git repo and
+    # uncomment the next lines if you want to build
+    build:
+        args:
+          CPUS: 12
+          BUILD_TYPE: Release
+        context: .
+        dockerfile: Dockerfile
+    image: stevenrbrandt/cxxex
+    container_name: cxxex-test
+    user: root
+    entrypoint: bash /notebooks/notebk.sh
+    environment:
+      - "PORT=8004"
+      - "CODE=frog39"
+      - "SECRET_TOKEN=love"
+    ports:
+      - "8022:8004"
