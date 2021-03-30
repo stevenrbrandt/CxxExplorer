@@ -1,13 +1,17 @@
 import ctypes, os, sys, re
 from signal import *
 
+delim = '$delim$'
+end = '$end$'
+delimend = delim+end
+
 class my_void_p(ctypes.c_void_p):
   pass
 
 def clearout(sig,frame):
-    sys.stdout.write("$delim$$end$")
+    sys.stdout.write(delimend)
     sys.stdout.flush()
-    sys.stderr.write("$delim$$end$")
+    sys.stderr.write(delimend)
     sys.stderr.flush()
     exit(2)
 
@@ -59,12 +63,12 @@ class cling:
         if stringResult:
             s = ctypes.cast(stringResult, ctypes.c_char_p).value.decode('utf8', 'replace').strip()
             if s != '':
-                print("$delim$")
+                print(delim)
                 print(s)
-        print('$delim$$end$')
+        print(delimend)
         sys.stdout.flush()
         sys.stderr.flush()
-        print('$delim$$end$',file=sys.stderr)
+        print(delimend,file=sys.stderr)
         sys.stderr.flush()
 
 cl = cling()
@@ -75,8 +79,8 @@ def readinp(inp):
     inbuf = ''
     while True:
         inbuf += inp.readline()
-        if '$delim$' in inbuf:
-            parts = inbuf.split(r'$delim$')
+        if delim in inbuf:
+            parts = inbuf.split(delim)
             inbuf = parts[0].strip()+'\n'
             return inbuf
 

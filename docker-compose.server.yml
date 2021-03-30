@@ -2,7 +2,7 @@ version: '2'
 
 services:
 
-  cxxex-workspace:
+  cxxex-server:
     # Download the full git repo and
     # uncomment the next lines if you want to build
     build:
@@ -12,11 +12,11 @@ services:
         context: .
         dockerfile: Dockerfile
     image: stevenrbrandt/cxxex
-    container_name: cxxex-notebook
-    user: jovyan
-    entrypoint: bash /notebooks/notebk.sh
+    container_name: cxxex-server
+    user: root
+    entrypoint: bash /root/startup.sh
     environment:
       - "PORT=8004"
-      - "SECRET_TOKEN=love"
+      - "CODE=frog39"
     ports:
-      - "8022:8004"
+      - "8021:8004"

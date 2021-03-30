@@ -98,7 +98,7 @@ ENV LD_LIBRARY_PATH /home/jovyan/install/phylanx/lib64:/usr/local/lib64:/home/jo
 USER root
 RUN dnf install -y nodejs psmisc tbb-devel
 RUN pip3 install --upgrade pip
-RUN pip3 install jupyter==1.0.0 jupyterhub==1.0.0 matplotlib numpy
+RUN pip3 install jupyter==1.0.0 jupyterhub==1.0.0 matplotlib numpy termcolor
 
 ## ENV DATE 2020-03-10
 ## RUN mkdir -p /usr/install/cling
@@ -152,7 +152,7 @@ RUN chmod 644 /usr/include/run_hpx.cpp
 RUN pip3 install oauthenticator
 RUN dnf install -y procps cppcheck python3-pycurl sqlite python3-libs
 COPY ./login.html /usr/local/share/jupyterhub/templates/login.html
-COPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/stellar-logo.png
+COPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/logo.png
 
 ENV PYTHONPATH /usr/local/python
 RUN mkdir -p /usr/local/python
@@ -202,6 +202,5 @@ RUN ln -s /usr/${CLING}/include/cling /usr/include/cling
 RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
 USER jovyan
 WORKDIR /home/jovyan
-COPY notebooks .
 COPY nb.py /root/
 CMD bash /notebooks/notebk.sh
