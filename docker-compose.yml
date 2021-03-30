@@ -13,7 +13,7 @@ services:
         dockerfile: Dockerfile
     image: stevenrbrandt/cxxex
     container_name: cxxex-test
-    user: root
+    user: jovyan
     entrypoint: bash /notebooks/notebk.sh
     environment:
       - "PORT=8004"

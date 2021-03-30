@@ -90,7 +90,7 @@ RUN git clone --depth 1 https://github.com/STEllAR-GROUP/blaze_tensor.git && \
     make -j ${CPUS} install && \
     rm -f $(find . -name \*.o)
 
-RUN echo "ALL            ALL = (ALL) NOPASSWD: ALL" >> /etc/sudoers
+COPY ./notebooks/*.ipynb /etc/skel/
 RUN useradd -m jovyan
 USER jovyan
 WORKDIR /home/jovyan
