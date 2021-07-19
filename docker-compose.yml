@@ -17,6 +17,6 @@ services:
     entrypoint: bash /notebooks/notebk.sh
     environment:
       - "PORT=8004"
-      - "SECRET_TOKEN=love"
+      #- "SECRET_TOKEN=...
     ports:
-      - "8022:8004"
+      - "8004:8004"
