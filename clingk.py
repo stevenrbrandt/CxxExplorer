@@ -41,6 +41,62 @@ from ipykernel.zmqshell import ZMQInteractiveShell
 from IPython.core.profiledir import ProfileDir
 from jupyter_client.session import Session
 
+import numpy as np
+import matplotlib.pyplot as plt
+import base64
+import io
+from contextlib import redirect_stdout, redirect_stderr
+import html
+from traceback import print_exc
+
+data_init = True
+
+def get_data(server,v):
+    global data_init
+    if data_init:
+        data_init = False
+        server.run_cell("#include <fstream>", False)
+    home = os.environ["HOME"]
+    fname = os.path.join(home, ".data.txt")
+    server.run_cell(f"""
+    {{ std::ofstream f("{fname}");
+       f << {v};
+       f.close();
+    }}""",False)
+    with open(fname, "r") as fd:
+        m = []
+        for line in fd.readlines():
+            n = []
+            for g in re.finditer(r'-?[0-9\.eEdD]+', line):
+                n += [float(g.group(0))]
+            m += [n]
+    m = np.array(m)
+    if len(m.shape)==2 and m.shape[1] == 1:
+        m = np.reshape(m,(m.shape[0],))
+    return m
+
+data_cache = {}
+
+def mk_plot(server,s):
+    global data_cache
+    vars = []
+    for g in re.finditer(r'\w+', s):
+        vars += [g.group(0)]
+    txt = ''
+    for y in vars:
+        ydata = get_data(server,y)
+        sh = ydata.shape
+        txt += f"{y} shape is {sh}"
+        data_cache[y] = ydata
+    #home = os.environ["HOME"]
+    #pname = os.path.join(home, "plot.png")
+    #plt.plot(xdata, ydata)
+    #plt.savefig(pname)
+    #with open(pname, "rb") as fd:
+    #    bs = base64.b64encode(fd.read()).decode()
+    #return f"<img src='data:image/png;base64,{bs}' />"
+    return txt
+
 # Expand out ~/ and ~name/
 def fnorm(fname):
   g = re.match(r'~(\w*)/', fname)
@@ -185,6 +241,7 @@ class ClingKernel(Kernel):
                 b"-lboost_program_options",
                 b"-lboost_system",
                 b"-lpthread",
+                b"-I/usr/local/include/BlazeIterative",
 		b"-I" + clingInstDir.encode('utf-8') + b"/include/"
 		]
         if os.path.exists("/usr/local/lib64/libhpx.so"):
@@ -368,6 +425,42 @@ class ClingKernel(Kernel):
                 }
                 return data
 
+            elif g.group(1)=="" and g.group(2)=="png":
+                fname = fnorm(g.group(3).strip())
+                try:
+                    with open(fname, "rb") as fd:
+                        bs = base64.b64encode(fd.read()).decode()
+                    plotString = f"<img src='data:image/png;base64,{bs}' />"
+                    self.session.send(
+                        self.iopub_socket,
+                        'execute_result',
+                        content={
+                            'data': {
+                                'text/html': plotString
+                            },
+                            'metadata': {},
+                            'execution_count': self.execution_count,
+                        },
+                        parent=self._parent_header
+                    )
+                except Exception as e:
+                    # There's probably a better way
+                    # to do this.
+                    outs = str(e)
+                    self.session.send(
+                        self.iopub_socket,
+                        'execute_result',
+                        content={
+                            'data': {
+                                'text/plain': outs
+                            },
+                            'metadata': {},
+                            'execution_count': self.execution_count,
+                        },
+                        parent=self._parent_header
+                    )
+
+
             elif g.group(1)=="%" and g.group(2)=="bash":
                 p = Popen(["bash"], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
                 body = codes[g.end():].strip()+'\n'
@@ -379,6 +472,53 @@ class ClingKernel(Kernel):
                         'data': {
                             'text/html': '<pre>'+html.escape(outs)+'</pre>'+
                                          '<pre style="color: red">'+html.escape(errs)+'</pre>'
+                        },
+                        'metadata': {},
+                        'execution_count': self.execution_count,
+                    },
+                    parent=self._parent_header
+                )
+            elif g.group(1)=="%" and g.group(2)=="plot":
+                # yyy
+                body = codes[g.end():].strip()+'\n'
+                buf = io.StringIO()
+                bufe = io.StringIO()
+                with redirect_stdout(buf):
+                    with redirect_stderr(bufe):
+                        try:
+                            exec(body,globals(),data_cache)
+                        except:
+                            print_exc()
+                        err_output = bufe.getvalue()
+                    std_output = buf.getvalue()
+                outString = "<pre>"+std_output+"\n"+err_output+"</pre>"
+                home = os.environ["HOME"]
+                pname = os.path.join(home, "plot.png")
+                #plt.plot(xdata, ydata)
+                plt.savefig(pname)
+                with open(pname, "rb") as fd:
+                    bs = base64.b64encode(fd.read()).decode()
+                plotString = outString + f"<img src='data:image/png;base64,{bs}' />"
+                self.session.send(
+                    self.iopub_socket,
+                    'execute_result',
+                    content={
+                        'data': {
+                            'text/html': plotString
+                        },
+                        'metadata': {},
+                        'execution_count': self.execution_count,
+                    },
+                    parent=self._parent_header
+                )
+            elif g.group(1)=="" and g.group(2)=="data":
+                plotString = mk_plot(self, g.group(3))
+                self.session.send(
+                    self.iopub_socket,
+                    'execute_result',
+                    content={
+                        'data': {
+                            'text/plain': plotString
                         },
                         'metadata': {},
                         'execution_count': self.execution_count,

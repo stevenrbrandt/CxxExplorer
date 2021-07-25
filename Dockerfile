@@ -4,7 +4,11 @@ RUN dnf install -y gcc-c++ gcc make git \
     libatomic which compat-openssl10 vim-enhanced wget zlib-devel \
     python3-flake8 gdb sudo python3 python3-pip openmpi-devel sqlite-devel sqlite \
     findutils openssl-devel papi papi-devel lm_sensors-devel tbb-devel cmake \
-    xz bzip2 patch flex openssh-server
+    xz bzip2 patch flex openssh-server \
+    texlive-xetex texlive-bibtex texlive-adjustbox texlive-caption texlive-collectbox \
+    texlive-enumitem texlive-environ texlive-eurosym texlive-jknapltx texlive-parskip \
+    texlive-pgf texlive-rsfs texlive-tcolorbox texlive-titling texlive-trimspaces \
+    texlive-ucs texlive-ulem texlive-upquote texlive-latex pandoc 
 
 ARG CPUS
 ARG BUILD_TYPE
@@ -100,50 +104,54 @@ RUN dnf install -y nodejs psmisc tbb-devel
 RUN pip3 install --upgrade pip
 RUN pip3 install jupyter==1.0.0 jupyterhub==1.0.0 matplotlib numpy termcolor
 
-## ENV DATE 2020-03-10
-## RUN mkdir -p /usr/install/cling
-## WORKDIR /usr/install/cling
-## RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/llvm.git src
-## WORKDIR /usr/install/cling/src/tools 
-## RUN git clone --depth 1 http://root.cern.ch/git/cling.git
-## RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/clang.git
+ENV DATE 2020-03-10
+RUN mkdir -p /usr/install/cling
+WORKDIR /usr/install/cling
+RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/llvm.git src
+WORKDIR /usr/install/cling/src/tools 
+RUN git clone --depth 1 http://root.cern.ch/git/cling.git
+RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/clang.git
 
-## WORKDIR /usr/install/cling/src/tools/cling
+WORKDIR /usr/install/cling/src/tools/cling
 
-## RUN mkdir -p /usr/install/cling/src/build
-## WORKDIR /usr/install/cling/src
-## WORKDIR /usr/install/cling/src/build
-## RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
-##   -DCMAKE_BUILD_TYPE=Release \
-##   -DCMAKE_CXX_FLAGS='-Wl,-s' \
-##   -DLLVM_ENABLE_RTTI=ON \
-##   -DLLVM_ENABLE_EH=ON \
-##   /usr/install/cling/src
-## RUN dnf install -y patch
-## WORKDIR /usr/install/cling/src
-## # COPY char.patch ./
-## # RUN patch -p1 < char.patch
-## WORKDIR /usr/install/cling/src/tools/cling
-## COPY noexcept.patch ./
-## RUN patch -p1 < noexcept.patch
-## WORKDIR /usr/install/cling/src/build
-## RUN make -j 8 install 2>&1 | tee make.out
-## RUN  cd /usr/install/cling/src/tools/cling/tools/Jupyter/kernel && \
-##   pip3 install -e . && \
-##   jupyter-kernelspec install cling-cpp14 && \
-##   jupyter-kernelspec install cling-cpp17 && \
-##   npm install -g configurable-http-proxy 
+RUN mkdir -p /usr/install/cling/src/build
+COPY Pipe.hpp /usr/local/include/
+COPY Augment_Kernel.hpp /usr/local/include
+COPY Kernel.cpp /usr/install/cling/src/tools/cling/tools/Jupyter
+
+WORKDIR /usr/install/cling/src/build
+RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS='-Wl,-s' \
+  -DLLVM_ENABLE_RTTI=ON \
+  -DLLVM_ENABLE_EH=ON \
+  /usr/install/cling/src
+RUN dnf install -y patch
+WORKDIR /usr/install/cling/src
+# COPY char.patch ./
+# RUN patch -p1 < char.patch
+WORKDIR /usr/install/cling/src/tools/cling
+COPY noexcept.patch ./
+RUN patch -p1 < noexcept.patch
+WORKDIR /usr/install/cling/src/build
+COPY make.sh /usr/install/cling/src/build/
+RUN bash ./make.sh
+RUN  cd /usr/install/cling/src/tools/cling/tools/Jupyter/kernel && \
+  pip3 install -e . && \
+  jupyter-kernelspec install cling-cpp14 && \
+  jupyter-kernelspec install cling-cpp17 && \
+  npm install -g configurable-http-proxy 
 WORKDIR /usr
-ENV CLING cling_2020-11-05_ROOT-fedora32
-ENV CLING_TARBALL ${CLING}.tar.bz2
-RUN curl -LO https://root.cern/download/cling/${CLING_TARBALL} && \
-    tar xjf ${CLING_TARBALL} && \
-    rm -f ${CLING_TARBALL}
-WORKDIR /usr/${CLING}/share/cling/Jupyter/kernel
-RUN pip3 install -e . && \
-    jupyter-kernelspec install cling-cpp17 && \
-    npm install -g configurable-http-proxy && \
-    ln -s /usr/${CLING}/bin/cling /usr/bin/cling
+## ENV CLING cling_2020-11-05_ROOT-fedora32
+## ENV CLING_TARBALL ${CLING}.tar.bz2
+## RUN curl -LO https://root.cern/download/cling/${CLING_TARBALL} && \
+##     tar xjf ${CLING_TARBALL} && \
+##     rm -f ${CLING_TARBALL}
+## WORKDIR /usr/${CLING}/share/cling/Jupyter/kernel
+## RUN pip3 install -e . && \
+##     jupyter-kernelspec install cling-cpp17 && \
+##     npm install -g configurable-http-proxy && \
+##     ln -s /usr/${CLING}/bin/cling /usr/bin/cling
 
 ## RUN (make -j 8 install 2>&1 | tee make.out)
 COPY ./run_hpx.cpp /usr/include/run_hpx.cpp
@@ -152,7 +160,7 @@ RUN chmod 644 /usr/include/run_hpx.cpp
 RUN pip3 install oauthenticator
 RUN dnf install -y procps cppcheck python3-pycurl sqlite python3-libs
 COPY ./login.html /usr/local/share/jupyterhub/templates/login.html
-COPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/logo.png
+COPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/
 
 ENV PYTHONPATH /usr/local/python
 RUN mkdir -p /usr/local/python
@@ -196,10 +204,12 @@ RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
 # CMD bash startup.sh
 
 COPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkernel.py
-RUN ln -s /usr/${CLING}/lib/libclingJupyter.so /usr/lib/libclingJupyter.so
-RUN ln -s /usr/${CLING}/lib/clang /usr/lib/clang
-RUN ln -s /usr/${CLING}/include/cling /usr/include/cling
+# RUN ln -s /usr/${CLING}/lib/libclingJupyter.so /usr/lib/libclingJupyter.so
+# RUN ln -s /usr/${CLING}/lib/clang /usr/lib/clang
+# RUN ln -s /usr/${CLING}/include/cling /usr/include/cling
 RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
+RUN dnf install -y ImageMagick file hostname
+COPY logo.png /usr/local/share/jupyterhub/static/images/
 USER jovyan
 WORKDIR /home/jovyan
 COPY nb.py /root/
