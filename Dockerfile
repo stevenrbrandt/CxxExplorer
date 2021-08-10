@@ -53,7 +53,7 @@ RUN ln -s /usr/lib64/openmpi/lib/libmpi.so /usr/lib64/openmpi/lib/libmpi.so.12
 #RUN pip3 install numpy tensorflow keras CNTK pytest
 WORKDIR /
 
-RUN git clone -b 1.6.0 https://github.com/STEllAR-GROUP/hpx.git
+RUN git clone -b 1.6.0 --depth 1 https://github.com/STEllAR-GROUP/hpx.git
 WORKDIR /hpx
 RUN mkdir -p /hpx/build
 WORKDIR /hpx/build
@@ -94,8 +94,12 @@ RUN git clone --depth 1 https://github.com/STEllAR-GROUP/blaze_tensor.git && \
     make -j ${CPUS} install && \
     rm -f $(find . -name \*.o)
 
-COPY ./notebooks/*.ipynb /etc/skel/
-RUN useradd -m jovyan
+WORKDIR /etc/skel
+COPY ./notebooks/*.ipynb ./
+RUN git clone --depth 1 https://github.com/shortcourse/USACM16-shortcourse
+RUN find . | xargs -d '\n' chmod +r
+
+RUN useradd -m jovyan -s /bin/bash
 USER jovyan
 WORKDIR /home/jovyan
 ENV LD_LIBRARY_PATH /home/jovyan/install/phylanx/lib64:/usr/local/lib64:/home/jovyan/install/phylanx/lib/phylanx:/usr/lib64/openmpi/lib
@@ -178,7 +182,7 @@ COPY ./py11.py ${PYTHONPATH}/
 #RUN ln -s /Python-${PYVER}/Include /usr/include/python${PYVER}
 WORKDIR /
 
-RUN git clone https://github.com/STEllAR-GROUP/BlazeIterative
+RUN git clone --depth 1 https://github.com/STEllAR-GROUP/BlazeIterative
 WORKDIR /BlazeIterative/build
 RUN cmake ..
 RUN make install
@@ -189,15 +193,13 @@ RUN ldconfig /usr/local/lib64
 WORKDIR /notebooks
 COPY ./notebk.sh ./
 
-
 WORKDIR /root
 RUN chmod 755 .
 COPY ./startup.sh startup.sh
 COPY ./jup-config.py jup-config.py
-COPY ./Dockerfile /Dockerfile
 
 # For authentication if we aren't using OAuth
-RUN git clone https://github.com/stevenrbrandt/cyolauthenticator.git
+RUN git clone --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
 RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
 
 # Use this CMD for a jupyterhub
@@ -210,6 +212,8 @@ COPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkern
 RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
 RUN dnf install -y ImageMagick file hostname
 COPY logo.png /usr/local/share/jupyterhub/static/images/
+
+COPY ./Dockerfile /Dockerfile
 USER jovyan
 WORKDIR /home/jovyan
 COPY nb.py /root/

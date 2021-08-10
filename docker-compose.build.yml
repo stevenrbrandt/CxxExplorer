@@ -5,12 +5,18 @@ services:
   cxxex-src-workspace:
     # Download the full git repo and
     # uncomment the next lines if you want to build
+    build:
+        args:
+          CPUS: 12
+          BUILD_TYPE: Release
+        context: .
+        dockerfile: Dockerfile
     image: stevenrbrandt/cxxex-src
     container_name: cxxex-src-nbk
     user: jovyan
     entrypoint: bash /notebooks/notebk.sh
     environment:
       - "PORT=8004"
-      - "SECRET_TOKEN=spoon"
+      #- "SECRET_TOKEN=...
     ports:
       - "8022:8004"
