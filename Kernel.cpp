@@ -24,6 +24,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 
 #include <Pipe.hpp>
 #include <sys/wait.h>
@@ -134,6 +135,10 @@ static std::string ValueToString(const cling::Value& V) {
   return valueString;
 }
 
+const char *expr = ".expr";
+const int nexpr = strlen(expr);
+int sequence = 0;
+
 /// Evaluate a string of code. Returns nullptr on failure.
 /// Returns a string representation of the expression (can be "") on success.
 char* cling_eval_inner(TheMetaProcessor *metaProc, const char *code,bool& good) {
@@ -143,12 +148,41 @@ char* cling_eval_inner(TheMetaProcessor *metaProc, const char *code,bool& good) 
   bool isExcept = false;
   try {
     good = 0;
-    if (M->process(code, Res, &V, /*disableValuePrinting*/ true)) {
+    std::ostringstream cmd;
+    std::ostringstream fname;
+  	fname << getenv("HOME") << "/.code" << (sequence++) << ".cc";
+  	std::ofstream cfile(fname.str());
+    if(strncmp(code,expr,nexpr) == 0) {
+        cfile << "struct __tmp__" << sequence << " {" << std::endl;
+
+        // constructor
+        cfile << "__tmp__" << sequence << " (){" << std::endl;
+        cfile << "#ifdef WRAP_EXPR" << std::endl;
+        cfile << "WRAP_EXPR(init();)" << std::endl;
+        cfile << "#else" << std::endl;
+        cfile << "init();" << std::endl;
+        cfile << "#endif" << std::endl;
+        cfile << "}" << std::endl;
+
+        cfile << "static void init() {" << std::endl;
+	    cfile << (code+nexpr) << std::endl;
+        cfile << "}" << std::endl;
+
+        cfile << "} __tmp__instance__" << sequence << ";" << std::endl;
+    } else {
+   	    cfile << code << std::endl;
+    }
+   	cfile.close();
+ 	cmd << ".L " << fname.str();
+    std::string cmdstr = cmd.str();
+    if (M->process(cmdstr.c_str(), Res, &V, /*disableValuePrinting*/ true)) {
       //cling::Jupyter::pushOutput({{"text/html", "Incomplete input! Ignored."}});
       std::cout << "Incomplete input! Ignored." << std::endl;
       M->cancelContinuation();
       return nullptr;
     }
+    std::string fstr = fname.str();
+    //unlink(fstr.c_str());
     good = (Res == 0);
   }
   catch(cling::InterpreterException& e) {

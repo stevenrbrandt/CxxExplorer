@@ -20,6 +20,7 @@ from __future__ import print_function
 __version__ = '0.0.3'
 
 import html
+from is_expr import is_expr
 from subprocess import Popen, PIPE
 import ctypes
 from contextlib import contextmanager
@@ -364,6 +365,10 @@ class ClingKernel(Kernel):
 
     def run_cell(self, code, silent=False):
         """Run code in cling, storing the expression result or an empty string if there is none."""
+        if re.match(r'^\s*\.expr', code):
+            pass
+        elif is_expr(code):
+            code = ".expr "+code
         self.stringResult = self.libclingJupyter.cling_eval(self.interp, ctypes.c_char_p(code.encode('utf8')))
 
     def do_execute(self, code, silent, store_history=True,

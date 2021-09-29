@@ -7,7 +7,6 @@ services:
     # uncomment the next lines if you want to build
     build:
         args:
-          CPUS: 12
           BUILD_TYPE: Release
         context: .
         dockerfile: Dockerfile
