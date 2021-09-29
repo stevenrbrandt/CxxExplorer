@@ -8,8 +8,8 @@ services:
     image: stevenrbrandt/cxxex-src
     container_name: cxxex-src-nbk
     user: jovyan
-    #entrypoint: bash /notebooks/notebk.sh
-    entrypoint: sleep infinity
+    entrypoint: bash /notebooks/notebk.sh
+    #entrypoint: sleep infinity
     environment:
       - "PORT=8004"
       - "SECRET_TOKEN=spoon"
