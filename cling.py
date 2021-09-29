@@ -7,6 +7,7 @@ import html
 import inspect
 import re
 from pipes1 import delim
+from is_expr import is_expr
 
 results = {}
 
@@ -31,7 +32,10 @@ history = []
 
 def replay(n=-1):
     global prev_history, history, pinterp
-    for cmd in prev_history[0:n]:
+    pinterp.kill()
+    pinterp.wait()
+    pinterp = pipes3.init_cling()
+    for cmd in history[0:n]:
         history += [cmd]
         color_text("#eeeeee","replaying: "+cmd)
         pinterp.stdin.write(cmd+delim+'\n')
@@ -56,25 +60,31 @@ def cling(line, code):
     elif line != line2:
         pinterp = pipes3.init_cling()
     try:
-        #istack = inspect.stack()
+        istack = inspect.stack()
         # Figure out where in the stack the symbol is supposed to go
         #for i in range(len(istack)):
         #    print("stack:",i,istack[i][0].f_globals.get("foo","UNDEF"))
-        #if len(istack) > 2:
-        #    caller = istack[2][0].f_globals
-        #else:
-        #    caller = {}
-        code = replvar(code, results)
+        if len(istack) > 2:
+            caller = istack[2][0].f_globals
+        else:
+            caller = {}
+        #code = replvar(code, results)
+        code = replvar(code, caller)
+        if code.startswith(".expr "):
+            pass
+        elif is_expr(code):
+            code = ".expr "+code
         history += [code]
         pinterp.stdin.write(code+delim+"\n")
         pinterp.stdin.flush()
         out = pipes3.read_output(pinterp, pinterp.stdout)
         err = pipes3.read_output(pinterp, pinterp.stderr)
-        if "Segfault or Fatal error" in out[0]:
-            pinterp.wait()
-            pinterp = pipes3.init_cling()
-            prev_history = history
-            history = []
+        #if "Segfault or Fatal error" in out[0] or "signal 11" in err[0]:
+        #    pinterp.kill()
+        #    pinterp.wait()
+        #    pinterp = pipes3.init_cling()
+        #    prev_history = history
+        #    history = []
         res = {"out":out[0], "err":err[0], "type":None}
         color_text("#f8f8ff",out[0])
         if len(out) > 1:

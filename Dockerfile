@@ -211,6 +211,7 @@ COPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkern
 # RUN ln -s /usr/${CLING}/include/cling /usr/include/cling
 RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
 RUN dnf install -y ImageMagick file hostname
+COPY is_expr.py /usr/local/python
 COPY logo.png /usr/local/share/jupyterhub/static/images/
 
 COPY ./Dockerfile /Dockerfile
