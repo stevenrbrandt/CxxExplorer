@@ -6,6 +6,7 @@ import inspect
 import ast
 import numpy as np
 import importlib
+from termcolor import colored
 
 load_func = """
 #include <dlfcn.h>
@@ -42,7 +43,7 @@ static inline void *load_func(const char *fun) {
 }
 """
 
-if "JPY_PARENT_PID" in os.environ:
+if type(sys.stdout).__module__ == 'ipykernel.iostream' and type(sys.stdout).__name__ == 'OutStream':
     is_jupyter = True
 else:
     is_jupyter = False
@@ -278,7 +279,7 @@ class fcall:
                 os.close(2)
                 os.dup(save_err)
                 os.close(save_err)
-                print(open(errfile,"r").read(),end='')
+                print(colored(open(errfile,"r").read(),"red"),end='')
         else:
             return self.m.call(*args)
 
@@ -489,7 +490,7 @@ class py11:
                 proc = Popen(cmd.split(' '),stdout=PIPE,stderr=PIPE,universal_newlines=True) 
                 outs, errs = proc.communicate()
                 print(outs,end='')
-                print(errs,end='')
+                print(colored(errs,"red"),end='')
                 r = proc.poll()
             except Exception as e:
                 print(e)

@@ -5,7 +5,7 @@ def is_expr(s):
     (
     //.*| # one line comments
     /\*[\d\D]*?\*/| # long comments
-    (\w+(?:::\w+)*)| # identifier
+    (\w+(?:::\w+)*(?:\.\w+(?:::\w+)*)*)| # identifier
     \s+| # spaces
     (<<|>>|[-+=*%/\[(]) # operator
     )'''
@@ -35,6 +35,7 @@ if __name__ == "__main__":
               ("hpx::cout <<",True),
               ("int a;",False),
               ("std::vector<int> v;",False),
+              ("v.clear();",True),
               ("cin >>",True),
               ("std::cin >>",True)]:
         print(v)
