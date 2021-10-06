@@ -140,6 +140,7 @@ def main():
     """Start the bot."""
     valid_users = 0
     os.makedirs(pwd_dir, exist_ok=True)
+    print("Determining if there any valid user logins...")
     for fname in os.listdir(pwd_dir):
         full = os.path.join(pwd_dir, fname)
         if not full.endswith(".txt"):
@@ -155,7 +156,9 @@ def main():
         if not re.match(r"^\w{3,100}$", c.strip()):
             print(f"Skipping '{fname}' because the contents are invalid")
             continue
+        print("A valid user login was found!")
         valid_users += 1
+        break
     if valid_users == 0:
         print(f"""
 No valid users are present in {pwd_dir}.
@@ -168,8 +171,17 @@ passwords, please try the following.
     randpass -n 1 -o ~/cxxcodes/username.txt MND
 """)
         exit(1)
+    print()
+    print("Checking for bot app tokens...")
     token = os.environ.get("CXXBOT_TOKEN", None)
-    assert token is not None, "Please set the CXXBOT_TOKEN environment variable"
+    if token is None:
+        print("""
+In order to use the bot, you must create a bot and get it's token from the BotFather
+(a special Telegram user id). Once you have it,Please set the CXXBOT_TOKEN environment variable
+with that token.""")
+        exit(3)
+    print("Token found! Starting up. Use Ctrl-C to shut down.")
+    print()
     updater = Updater(token, use_context=True)
 
     # Get the dispatcher to register handlers
