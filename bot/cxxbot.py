@@ -29,6 +29,9 @@ from telegram import Update
 
 from teleplot import plotjson
 
+pwd_dir = os.path.join(os.environ["HOME"],"cxxcodes")
+time_limit = 24*60*60*7 # one week
+
 # Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -98,12 +101,12 @@ def cmdproc(update: Update, context: CallbackContext) -> None:
     if username not in clients:
         g = re.match(r'(\w{3,100}):(\w{3,100})', code.strip())
         if g:
-            fname = "/etc/cxxcodes/"+g.group(1)+".txt"
+            fname = os.path.join(pwd_dir, +g.group(1)+".txt")
             if os.path.exists(fname):
                 mt = mtime(fname)
                 with open(fname, "r") as fd:
                     contents = fd.read().strip()
-                if mt > 60*60*24:
+                if mt > time_limit:
                     msg(update, "Password expired")
                 elif contents == g.group(2):
                     clients[username] = telecling.ClingServer()
@@ -135,9 +138,36 @@ def cmdproc(update: Update, context: CallbackContext) -> None:
 
 def main():
     """Start the bot."""
-    # Create the Updater and pass it your bot's token.
-    # Make sure to set use_context=True to use the new context based callbacks
-    # Post version 12 this will no longer be necessary
+    valid_users = 0
+    os.makedirs(pwd_dir, exist_ok=True)
+    for fname in os.listdir(pwd_dir):
+        full = os.path.join(pwd_dir, fname)
+        if not full.endswith(".txt"):
+            print(f"Skipping '{fname}' because it does not end in .txt")
+            continue
+        if mtime(full) > time_limit:
+            print(f"Skipping '{fname}' because it is expired")
+            continue
+        if (os.stat(full).st_mode & 0o66) != 0:
+            print(f"Skipping '{fname}' because it is readable by others.")
+            continue
+        c = open(full,"r").read()
+        if not re.match(r"^\w{3,100}$", c.strip()):
+            print(f"Skipping '{fname}' because the contents are invalid")
+            continue
+        valid_users += 1
+    if valid_users == 0:
+        print(f"""
+No valid users are present in {pwd_dir}.
+
+To create a valid user, create a file named ~/cxxcodes/username.txt that contains
+a password consisting of letters, numbers, or the underscore. For help in inventing
+passwords, please try the following.
+
+    pip3 install --user randpass
+    randpass -n 1 -o ~/cxxcodes/username.txt MND
+""")
+        exit(1)
     token = os.environ.get("CXXBOT_TOKEN", None)
     assert token is not None, "Please set the CXXBOT_TOKEN environment variable"
     updater = Updater(token, use_context=True)
