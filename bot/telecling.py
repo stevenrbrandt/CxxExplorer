@@ -1,4 +1,5 @@
 import pipes3
+from is_expr import is_expr
 
 from traceback import print_exc
 from IPython.core.magic import register_cell_magic
@@ -56,6 +57,8 @@ class ClingServer:
             pinterp = self.pinterp
             caller = inspect.stack()[-1][0].f_globals
             code = replvar(code, caller)
+            if is_expr(code):
+                code = ".expr "+code
             #history += [code]
             pinterp.stdin.write(code+"$delim$\n")
             pinterp.stdin.flush()
