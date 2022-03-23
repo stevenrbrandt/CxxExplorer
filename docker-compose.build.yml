@@ -7,6 +7,7 @@ services:
   cxxex-src-workspace:
     build:
         args:
+          CPUS: 8
           BUILD_TYPE: Release
         context: .
         dockerfile: Dockerfile
