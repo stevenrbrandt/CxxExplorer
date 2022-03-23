@@ -28,6 +28,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telegram import Update
 
 from teleplot import plotjson
+from colored import colored
 
 pwd_dir = os.path.join(os.environ["HOME"],"cxxcodes")
 time_limit = 24*60*60*7 # one week
@@ -69,7 +70,7 @@ def msg(update, text):
         else:
             update.message.reply_text(text)
     except:
-        print("FATAL EXCEPTION")
+        print(colored("FATAL EXCEPTION","red"))
         print_exc()
         shutdown.end()
 
@@ -101,7 +102,7 @@ def cmdproc(update: Update, context: CallbackContext) -> None:
     if username not in clients:
         g = re.match(r'(\w{3,100}):(\w{3,100})', code.strip())
         if g:
-            fname = os.path.join(pwd_dir, +g.group(1)+".txt")
+            fname = os.path.join(pwd_dir, g.group(1)+".txt")
             if os.path.exists(fname):
                 mt = mtime(fname)
                 with open(fname, "r") as fd:
@@ -144,25 +145,24 @@ def main():
     for fname in os.listdir(pwd_dir):
         full = os.path.join(pwd_dir, fname)
         if not full.endswith(".txt"):
-            print(f"Skipping '{fname}' because it does not end in .txt")
+            print(colored(f"Skipping '{fname}' because it does not end in .txt","red"))
             continue
         if mtime(full) > time_limit:
-            print(f"Skipping '{fname}' because it is expired")
+            print(colored(f"Skipping '{fname}' because it is expired","red"))
             continue
         if (os.stat(full).st_mode & 0o66) != 0:
-            print(f"Skipping '{fname}' because it is readable by others.")
+            print(colored(f"Skipping '{fname}' because it is readable by others.","red"))
             continue
         c = open(full,"r").read()
         if not re.match(r"^\w{3,100}$", c.strip()):
-            print(f"Skipping '{fname}' because the contents are invalid")
+            print(colored(f"Skipping '{fname}' because the contents are invalid","red"))
             continue
-        print("A valid user login was found!")
+        print(colored("A valid user login was found!","green"))
         valid_users += 1
         break
     if valid_users == 0:
+        print(colored(f"No valid users are present in {pwd_dir}.","red"))
         print(f"""
-No valid users are present in {pwd_dir}.
-
 To create a valid user, create a file named ~/cxxcodes/username.txt that contains
 a password consisting of letters, numbers, or the underscore. For help in inventing
 passwords, please try the following.
@@ -172,15 +172,16 @@ passwords, please try the following.
 """)
         exit(1)
     print()
-    print("Checking for bot app tokens...")
+    print("Checking for a bot app token...")
     token = os.environ.get("CXXBOT_TOKEN", None)
     if token is None:
+        print(colored("No valid token found.","red"))
         print("""
 In order to use the bot, you must create a bot and get it's token from the BotFather
 (a special Telegram user id). Once you have it,Please set the CXXBOT_TOKEN environment variable
 with that token.""")
         exit(3)
-    print("Token found! Starting up. Use Ctrl-C to shut down.")
+    print(colored("Token found! Starting up. Use Ctrl-C to shut down.","green"))
     print()
     updater = Updater(token, use_context=True)
 

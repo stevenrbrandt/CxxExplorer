@@ -216,6 +216,15 @@ COPY logo.png /usr/local/share/jupyterhub/static/images/
 
 COPY ./Dockerfile /Dockerfile
 USER jovyan
+
+RUN mkdir -p /home/jovyan/bot
+COPY bot/cxxbot.py /home/jovyan/bot/
+COPY bot/teleplot.py /home/jovyan/bot/
+COPY bot/telecling.py /home/jovyan/bot/
+COPY bot/thumbsup.png /home/jovyan/bot/
+COPY bot/colored.py /home/jovyan/bot/
+RUN pip3 install --user randpass python-telegram-bot
+
 WORKDIR /home/jovyan
 COPY nb.py /root/
 CMD bash /notebooks/notebk.sh
