@@ -1,4 +1,6 @@
 version: '2'
+# Use this file to build the C++Explorer instead of downloading it.
+# docker-compose -f docker-compose.build.yml build --pull
 
 services:
 
