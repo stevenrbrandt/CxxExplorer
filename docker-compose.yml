@@ -1,10 +1,12 @@
 version: '2'
 
+volumes:
+    # Provide persistent storage 
+    nbk_home:
+
 services:
 
   cxxex-src-workspace:
-    # Download the full git repo and
-    # uncomment the next lines if you want to build
     image: stevenrbrandt/cxxex-src
     container_name: cxxex-src-nbk
     user: jovyan
@@ -15,3 +17,5 @@ services:
       - "SECRET_TOKEN=spoon"
     ports:
       - "8022:8004"
+    volumes:
+      - nbk_home:/home
