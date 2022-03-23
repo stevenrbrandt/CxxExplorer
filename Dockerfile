@@ -213,6 +213,7 @@ RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
 RUN dnf install -y ImageMagick file hostname
 COPY is_expr.py /usr/local/python
 COPY logo.png /usr/local/share/jupyterhub/static/images/
+COPY teleplot.hpp /usr/include
 
 COPY ./Dockerfile /Dockerfile
 USER jovyan

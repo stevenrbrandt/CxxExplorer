@@ -50,6 +50,10 @@ class ClingServer:
         self.count = 0
     def exec_code(self, code):
         try:
+            if code.strip() == ".restart":
+                self.count = 0
+                self.pinterp = pipes3.init_cling()
+                code = "";
             self.count += 1
             code = re.sub(r'«','<<',code)
             if self.pinterp is None:

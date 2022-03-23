@@ -55,6 +55,11 @@ class Shutdown:
 
 shutdown = Shutdown(os.getpid())
 
+def shorten(text):
+    if len(text) > 4000:
+        return text[:4000]+"..."
+    return text
+
 def msg(update, text):
     try:
         try:
@@ -66,9 +71,9 @@ def msg(update, text):
                 update.message.reply_photo(fd)
             os.remove(image)
         elif re.search(r'</(b|i|strong|em|code|s|strike|del|pre)>', text):
-            update.message.reply_html(text)
+            update.message.reply_html(shorten(text))
         else:
-            update.message.reply_text(text)
+            update.message.reply_text(shorten(text))
     except:
         print(colored("FATAL EXCEPTION","red"))
         print_exc()
