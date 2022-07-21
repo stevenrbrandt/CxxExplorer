@@ -59,11 +59,11 @@ def get_data(server,v):
         server.run_cell("#include <fstream>", False)
     home = os.environ["HOME"]
     fname = os.path.join(home, ".data.txt")
-    server.run_cell(f"""
-    {{ std::ofstream f("{fname}");
-       f << {v};
-       f.close();
-    }}""",False)
+    server.run_cell(f""".expr
+    std::ofstream f("{fname}");
+    f << {v};
+    f.close();
+    """,False)
     with open(fname, "r") as fd:
         m = []
         for line in fd.readlines():
