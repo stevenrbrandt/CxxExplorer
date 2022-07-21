@@ -21,6 +21,16 @@ then
     echo $CODE > /usr/enable_mkuser
 fi
 
+if [ -r /home/passwd ]
+then
+    cp /home/passwd /etc/passwd
+fi
+
+if [ -r /home/shadow ]
+then
+    cp /home/shadow /etc/shadow
+fi
+
 # Re-create all existing users with the correct id
 # Needed if one mounts a persistent /home because
 # /etc/passwd cannot easily be mounted. So all user

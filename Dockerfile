@@ -20,19 +20,19 @@ WORKDIR /
 ## COPY alternatives.sh /usr/local/bin
 ## RUN bash /usr/local/bin/alternatives.sh
 
-ENV AH_VER 4.6.0
-RUN curl -kLO https://www.dyninst.org/sites/default/files/downloads/harmony/ah-${AH_VER}.tar.gz
-RUN tar -xzf ah-${AH_VER}.tar.gz
-WORKDIR /activeharmony-${AH_VER}
-COPY ./activeharmony-4.6.0/code-server/code_generator.cxx code-server/code_generator.cxx
-RUN make CFLAGS=-fPIC LDFLAGS=-fPIC && make install prefix=/usr/local/activeharmony
+# ENV AH_VER 4.6.0
+# RUN curl -kLO https://www.dyninst.org/sites/default/files/downloads/harmony/ah-${AH_VER}.tar.gz
+# RUN tar -xzf ah-${AH_VER}.tar.gz
+# WORKDIR /activeharmony-${AH_VER}
+# COPY ./activeharmony-4.6.0/code-server/code_generator.cxx code-server/code_generator.cxx
+# RUN make CFLAGS=-fPIC LDFLAGS=-fPIC && make install prefix=/usr/local/activeharmony
 
-ENV OTF2_VER 2.1.1
-WORKDIR /
-RUN curl -kLO https://www.vi-hps.org/cms/upload/packages/otf2/otf2-${OTF2_VER}.tar.gz
-RUN tar -xzf otf2-${OTF2_VER}.tar.gz
-WORKDIR otf2-${OTF2_VER}
-RUN ./configure --prefix=/usr/local/otf2 --enable-shared && make && make install
+# ENV OTF2_VER 2.1.1
+# WORKDIR /
+# RUN curl -kLO https://www.vi-hps.org/cms/upload/packages/otf2/otf2-${OTF2_VER}.tar.gz
+# RUN tar -xzf otf2-${OTF2_VER}.tar.gz
+# WORKDIR otf2-${OTF2_VER}
+# RUN ./configure --prefix=/usr/local/otf2 --enable-shared && make && make install
 
 RUN ln -s /usr/lib64/openmpi/lib/libmpi_cxx.so /usr/lib64/openmpi/lib/libmpi_cxx.so.1
 RUN ln -s /usr/lib64/openmpi/lib/libmpi.so /usr/lib64/openmpi/lib/libmpi.so.12
@@ -58,6 +58,7 @@ WORKDIR /hpx
 RUN mkdir -p /hpx/build
 WORKDIR /hpx/build
 RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DHPX_WITH_FETCH_ASIO=ON \
       -DHPX_WITH_BUILTIN_INTEGER_PACK=Off \
       -DHPX_WITH_ITTNOTIFY=OFF \
       -DHPX_WITH_THREAD_COMPATIBILITY=ON \
@@ -96,7 +97,8 @@ RUN git clone --depth 1 https://github.com/STEllAR-GROUP/blaze_tensor.git && \
 
 WORKDIR /etc/skel
 COPY ./notebooks/*.ipynb ./
-RUN git clone --depth 1 https://github.com/shortcourse/USACM16-shortcourse
+#RUN git clone --depth 1 https://github.com/shortcourse/USACM16-shortcourse
+RUN git clone --depth 1 https://github.com/shortcourse/WCCM-APCOM-22
 RUN find . | xargs -d '\n' chmod +r
 
 RUN useradd -m jovyan -s /bin/bash
@@ -132,8 +134,8 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
   /usr/install/cling/src
 RUN dnf install -y patch
 WORKDIR /usr/install/cling/src
-# COPY char.patch ./
-# RUN patch -p1 < char.patch
+COPY limits.patch .
+RUN patch -p1 < limits.patch
 WORKDIR /usr/install/cling/src/tools/cling
 COPY noexcept.patch ./
 RUN patch -p1 < noexcept.patch
