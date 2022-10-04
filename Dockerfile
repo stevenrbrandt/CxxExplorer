@@ -1,9 +1,9 @@
-FROM fedora:32
+FROM fedora:33
 RUN dnf install -y gcc-c++ gcc make git \
     bzip2 hwloc-devel blas blas-devel lapack lapack-devel boost-devel \
-    libatomic which compat-openssl10 vim-enhanced wget zlib-devel \
+    libatomic which vim-enhanced wget zlib-devel cmake \
     python3-flake8 gdb sudo python3 python3-pip openmpi-devel sqlite-devel sqlite \
-    findutils openssl-devel papi papi-devel lm_sensors-devel tbb-devel cmake \
+    findutils openssl-devel papi papi-devel lm_sensors-devel tbb-devel \
     xz bzip2 patch flex openssh-server \
     texlive-xetex texlive-bibtex texlive-adjustbox texlive-caption texlive-collectbox \
     texlive-enumitem texlive-environ texlive-eurosym texlive-jknapltx texlive-parskip \
@@ -52,23 +52,6 @@ RUN ln -s /usr/lib64/openmpi/lib/libmpi.so /usr/lib64/openmpi/lib/libmpi.so.12
 #RUN pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org numpy tensorflow keras CNTK pytest
 #RUN pip3 install numpy tensorflow keras CNTK pytest
 WORKDIR /
-
-RUN git clone -b 1.6.0 --depth 1 https://github.com/STEllAR-GROUP/hpx.git
-WORKDIR /hpx
-RUN mkdir -p /hpx/build
-WORKDIR /hpx/build
-RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-      -DHPX_WITH_FETCH_ASIO=ON \
-      -DHPX_WITH_BUILTIN_INTEGER_PACK=Off \
-      -DHPX_WITH_ITTNOTIFY=OFF \
-      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
-      -DHPX_WITH_MALLOC=system \
-      -DHPX_WITH_MORE_THAN_64_THREADS=ON \
-      -DHPX_WITH_MAX_CPU_COUNT=80 \
-      -DHPX_WITH_EXAMPLES=Off \
-      .. && \
-    make -j ${CPUS} install && \
-    rm -f $(find . -name \*.o)
 
 RUN dnf install -y python3-devel
 
@@ -144,7 +127,6 @@ COPY make.sh /usr/install/cling/src/build/
 RUN bash ./make.sh
 RUN  cd /usr/install/cling/src/tools/cling/tools/Jupyter/kernel && \
   pip3 install -e . && \
-  jupyter-kernelspec install cling-cpp14 && \
   jupyter-kernelspec install cling-cpp17 && \
   npm install -g configurable-http-proxy 
 WORKDIR /usr
@@ -158,6 +140,26 @@ WORKDIR /usr
 ##     jupyter-kernelspec install cling-cpp17 && \
 ##     npm install -g configurable-http-proxy && \
 ##     ln -s /usr/${CLING}/bin/cling /usr/bin/cling
+
+RUN git clone -b 1.8.0 --depth 1 https://github.com/STEllAR-GROUP/hpx.git /hpx
+WORKDIR /hpx
+RUN mkdir -p /hpx/build
+WORKDIR /hpx/build
+#RUN env CXX=$(which clang++) cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DHPX_FILESYSTEM_WITH_BOOST_FILESYSTEM_COMPATIBILITY=ON \
+      -DHPX_WITH_CXX17_HARDWARE_DESTRUCTIVE_INTERFERENCE_SIZE=OFF \
+      -DHPX_WITH_FETCH_ASIO=ON \
+      -DHPX_WITH_BUILTIN_INTEGER_PACK=OFF \
+      -DHPX_WITH_ITTNOTIFY=OFF \
+      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
+      -DHPX_WITH_MALLOC=system \
+      -DHPX_WITH_MORE_THAN_64_THREADS=ON \
+      -DHPX_WITH_MAX_CPU_COUNT=80 \
+      -DHPX_WITH_EXAMPLES=Off \
+      .. && \
+    make -j ${CPUS} install && \
+    rm -f $(find . -name \*.o)
 
 ## RUN (make -j 8 install 2>&1 | tee make.out)
 COPY ./run_hpx.cpp /usr/include/run_hpx.cpp

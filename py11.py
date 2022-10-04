@@ -79,7 +79,7 @@ else:
     else:
         pybind11_header = "[pybind11 install directory]"
 
-flags = "-std=c++14"
+flags = "-std=c++17"
 
 def set_flags(f):
     global flags

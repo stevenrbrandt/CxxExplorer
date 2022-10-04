@@ -165,9 +165,9 @@ class ClingKernel(Kernel):
     # Used in handle_input()
     flush_interval = Float(0.25, config=True)
 
-    std = CaselessStrEnum(default_value='c++11',
-            values = ['c++11', 'c++14', 'c++1z', 'c++17'],
-            help="C++ standard to use, either c++17, c++1z, c++14 or c++11").tag(config=True);
+    std = CaselessStrEnum(default_value='c++17',
+            values = ['c++1z', 'c++17'],
+            help="C++ standard to use, either c++17, c++1z").tag(config=True);
 
     def __init__(self, **kwargs):
         super(ClingKernel, self).__init__(**kwargs)
@@ -226,7 +226,6 @@ class ClingKernel(Kernel):
 
         self.libclingJupyter.cling_create.restype = my_void_p
         self.libclingJupyter.cling_eval.restype = my_void_p
-        #build -std=c++11 or -std=c++14 option
         stdopt = ("-std=" + self.std).encode('utf-8')
         self.log.info("Using {}".format(stdopt.decode('utf-8')))
         #from IPython.utils import io
