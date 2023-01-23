@@ -17,5 +17,5 @@ services:
       - "SECRET_TOKEN=spoon"
     ports:
       - "8022:8004"
-    volumes:
-      - nbk_home:/home
+    #volumes:
+    #  - nbk_home:/home

@@ -13,7 +13,9 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt update -y && apt install -y bzip2 libhwloc-dev vim git gdb python3 python3-pip \
     libpapi-dev patch cmake libblas-dev liblapack-dev libtbb-dev patch npm \
-    libboost-dev libboost-filesystem-dev \
+    libglew-dev libboost-all-dev \
+    t1-xfree86-nonfree ttf-xfree86-nonfree ttf-xfree86-nonfree-syriac xfonts-75dpi xfonts-100dpi \
+    dpkg-dev cmake g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev \
     && apt clean
 
 ARG CPUS
@@ -111,13 +113,13 @@ WORKDIR /usr/install/cling/src/tools/cling
 
 RUN mkdir -p /usr/install/cling/src/build
 COPY Pipe.hpp /usr/local/include/
-#COPY Augment_Kernel.hpp /usr/local/include
-#COPY Kernel.cpp /usr/install/cling/src/tools/cling/tools/Jupyter
+COPY Augment_Kernel.hpp /usr/local/include
+COPY Kernel.cpp /usr/install/cling/src/tools/cling/tools/Jupyter
 
 WORKDIR /usr/install/cling/src/build
 RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_FLAGS='-Wl,-s -std=c++2a' \
+  -DCMAKE_CXX_FLAGS='-Wl,-s' \
   -DLLVM_ENABLE_RTTI=ON \
   -DLLVM_ENABLE_EH=ON \
   /usr/install/cling/src
@@ -147,7 +149,7 @@ WORKDIR /usr
 ##     npm install -g configurable-http-proxy && \
 ##     ln -s /usr/${CLING}/bin/cling /usr/bin/cling
 
-RUN git clone -b 1.8.0 --depth 1 https://github.com/STEllAR-GROUP/hpx.git /hpx
+RUN git clone -b 1.8.1 --depth 1 https://github.com/STEllAR-GROUP/hpx.git /hpx
 WORKDIR /hpx
 RUN mkdir -p /hpx/build
 WORKDIR /hpx/build
@@ -165,6 +167,7 @@ RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
       -DHPX_WITH_EXAMPLES=Off \
       -DHPX_WITH_CXX_STANDARD=20 \
       -DHPX_WITH_DATAPAR_BACKEND=STD_EXPERIMENTAL_SIMD \
+      -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
       .. && \
     make -j ${CPUS} install && \
     rm -f $(find . -name \*.o)
@@ -228,6 +231,8 @@ COPY logo.png /usr/local/share/jupyterhub/static/images/
 COPY teleplot.hpp /usr/include
 
 COPY ./Dockerfile /Dockerfile
+# Not sure why this makes sense
+RUN ln -s /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 /usr/lib64/libboost_system.so.1.0.0
 USER jovyan
 
 RUN mkdir -p /home/jovyan/bot

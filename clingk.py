@@ -198,19 +198,15 @@ class ClingKernel(Kernel):
 
         for libFolder in ["/lib/libclingJupyter.", "/libexec/lib/libclingJupyter."]:
 
-            bver = 0
-            for fn in os.listdir("/usr/lib64"):
-                g = re.match(r'libboost_system.so.1.(\d+).*',fn)
-                if g:
-                    bver = int(g.group(1))
-            ctypes.CDLL("/usr/lib64/libboost_system.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            ctypes.CDLL("/usr/lib64/libboost_filesystem.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            ctypes.CDLL("/usr/lib64/libboost_program_options.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            ctypes.CDLL("/usr/lib64/libboost_thread.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            if os.path.exists("/usr/local/lib64/libhpx.so"):
-                ctypes.CDLL("/usr/local/lib64/libhpx.so",ctypes.RTLD_GLOBAL)
+            boost_libdir = "/usr/lib/x86_64-linux-gnu"
+            for fnm in os.listdir(boost_libdir):
+                if fnm.startswith("libboost") and ".so." in fnm:
+                    full_fnm = os.path.join(boost_libdir, fnm)
+                    ctypes.CDLL(full_fnm, ctypes.RTLD_GLOBAL)
+            if os.path.exists("/usr/local/lib/libhpx.so"):
+                ctypes.CDLL("/usr/local/lib/libhpx.so",ctypes.RTLD_GLOBAL)
             else:
-                ctypes.CDLL("/usr/local/lib64/libhpxd.so",ctypes.RTLD_GLOBAL)
+                ctypes.CDLL("/usr/local/lib/libhpxd.so",ctypes.RTLD_GLOBAL)
             for ext in ['so', 'dylib', 'dll']:
                 libFilename = clingInstDir + libFolder + ext
                 if os.access(libFilename, os.R_OK):

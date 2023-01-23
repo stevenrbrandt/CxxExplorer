@@ -10,6 +10,6 @@ services:
           CPUS: 8
           BUILD_TYPE: Release
         context: .
-        dockerfile: Dockerfile
+        dockerfile: Dockerfile.ubuntu
     image: stevenrbrandt/cxxex-src
     container_name: cxxex-src-nbk
