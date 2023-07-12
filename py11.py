@@ -483,7 +483,7 @@ class py11:
 
             with open(fname, "w") as fd:
                 fd.write(src)
-            cmd="c++ {flags} -I{python_header} -I{pybind11_header} -rdynamic -fPIC -shared -o {base}.so {fname}".format(base=base,python_header=python_header,pybind11_header=pybind11_header,flags=flags,fname=fname)
+            cmd="c++ -Wl,--start {flags} -I{python_header} -I{pybind11_header} -rdynamic -fPIC -shared -o {base}.so {fname} -Wl,--end".format(base=base,python_header=python_header,pybind11_header=pybind11_header,flags=flags,fname=fname)
             r = 0
             try:
                 print(cmd)
