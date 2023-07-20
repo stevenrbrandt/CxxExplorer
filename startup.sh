@@ -49,6 +49,7 @@ if [ "$OAUTH_CLIENT_ID" = "" ]
 then
   echo Using invent your own password auth...
   cp /root/cyolauthenticator/docker/*.html /usr/local/share/jupyterhub/templates
+  cp /root/login2.html /usr/local/share/jupyterhub/templates/login.html
 else
   if [ "$CODE" != "" ]
   then

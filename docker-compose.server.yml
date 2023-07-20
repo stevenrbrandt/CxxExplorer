@@ -33,7 +33,7 @@ services:
       # If you don't have a cert...
       #- "8088:80"
       # If you have a cert...
-      - "8443:443"
+      - "443:443"
     volumes:
       # The expected cert name: /etc/pki/tls/certs/tutorial.cct.lsu.edu.cer
       # The expected key name: /etc/pki/tls/private/tutorial.cct.lsu.edu.key

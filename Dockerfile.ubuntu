@@ -15,7 +15,7 @@ RUN apt update -y && apt install -y bzip2 libhwloc-dev vim git gdb python3 pytho
     libpapi-dev patch cmake libblas-dev liblapack-dev libtbb-dev patch npm \
     libglew-dev libboost-all-dev \
     t1-xfree86-nonfree ttf-xfree86-nonfree ttf-xfree86-nonfree-syriac xfonts-75dpi xfonts-100dpi \
-    dpkg-dev cmake g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev \
+    dpkg-dev cmake g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev imagemagick \
     && apt clean
 
 ARG CPUS
@@ -104,10 +104,17 @@ RUN pip3 install jupyter==1.0.0 jupyterhub==1.0.0 matplotlib numpy termcolor
 ENV DATE 2020-03-10
 RUN mkdir -p /usr/install/cling
 WORKDIR /usr/install/cling
-RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/llvm.git src
-WORKDIR /usr/install/cling/src/tools 
-RUN git clone --depth 1 http://root.cern.ch/git/cling.git
-RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/clang.git
+RUN git clone --branch cling-patches http://root.cern.ch/git/llvm.git src
+WORKDIR /usr/install/cling/src
+RUN git checkout ac712f0f44b45a1455a302dd6cbb7b6cce269d2d
+WORKDIR /usr/install/cling/src/tools
+RUN git clone http://root.cern.ch/git/cling.git
+WORKDIR /usr/install/cling/src/tools/cling
+RUN git checkout 2949bf96b71f9301247275a8097a060aae3429f4
+WORKDIR /usr/install/cling/src/tools
+RUN git clone --branch cling-patches http://root.cern.ch/git/clang.git
+WORKDIR /usr/install/cling/src/tools/clang
+RUN git checkout 25f804797f80b69d8c56794e3e0300acd9458958
 
 WORKDIR /usr/install/cling/src/tools/cling
 
@@ -179,6 +186,7 @@ RUN chmod 644 /usr/include/run_hpx.cpp
 RUN pip3 install oauthenticator
 #RUN dnf install -y procps cppcheck python3-pycurl sqlite python3-libs
 COPY ./login.html /usr/local/share/jupyterhub/templates/login.html
+COPY ./login2.html /root
 COPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/
 
 ENV PYTHONPATH /usr/local/python
@@ -214,8 +222,8 @@ COPY ./startup.sh startup.sh
 COPY ./jup-config.py jup-config.py
 
 # For authentication if we aren't using OAuth
-RUN git clone --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
-RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
+RUN git clone -b v1.2 --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
+RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git@v1.2
 
 # Use this CMD for a jupyterhub
 # CMD bash startup.sh
@@ -245,4 +253,5 @@ RUN pip3 install --user randpass python-telegram-bot
 
 WORKDIR /home/jovyan
 COPY nb.py /root/
+COPY hpxcxx /usr/local/bin/
 CMD bash /notebooks/notebk.sh

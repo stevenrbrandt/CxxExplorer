@@ -176,6 +176,7 @@ RUN chmod 644 /usr/include/run_hpx.cpp
 RUN pip3 install oauthenticator
 #RUN dnf install -y procps cppcheck python3-pycurl sqlite python3-libs
 COPY ./login.html /usr/local/share/jupyterhub/templates/login.html
+COPY ./login2.html /root
 COPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/
 
 ENV PYTHONPATH /usr/local/python
@@ -211,7 +212,7 @@ COPY ./startup.sh startup.sh
 COPY ./jup-config.py jup-config.py
 
 # For authentication if we aren't using OAuth
-RUN git clone --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
+RUN git clone -b v1.2 --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
 RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
 
 # Use this CMD for a jupyterhub

@@ -3,7 +3,7 @@
   {% set announcement = announcement_login %}
 {% endif %}
 
-{% set announcement = '<table width=\'500px\' border=0 cellpadding=5 cellspacing=0 style=\'margin-left: auto; margin-right: auto\'><tr><td><img width=200 src=\'/hub/static/images/stellar-logo.png\'></td><td><h2>Welcome to the HPX/C++ Server</h2></td></tr></table>' %}
+{% set announcement = '<table width=\'500px\' border=0 cellpadding=5 cellspacing=0 style=\'margin-left: auto; margin-right: auto\'><tr><td><img width=200 src=\'/hub/static/images/logo.png\'></td><td><h1>Welcome to the Tutorial Server</h1></td></tr></table>' %}
 
 {% block login_widget %}
 {% endblock %}
@@ -27,10 +27,14 @@
   </div>
   <div class='auth-form-body'>
 
-    <p id='insecure-login-warning' class='hidden'>
-    Warning: JupyterHub seems to be served over an unsecured HTTP connection.
-    We strongly recommend enabling HTTPS for JupyterHub.
-    </p>
+    <p>To create a new user, use the
+    same password and password2, fill in the value for
+    'code' supplied by the tutorial presenter, and click the create button.
+    If it is available, your username
+    will be created.</p>
+
+    <p>For subsequent logins, it is not necessary to
+    fill in the password2 field.</p>
 
     {% if login_error %}
     <p class="login_error">
@@ -64,7 +68,32 @@
       id="login_submit"
       class='btn btn-jupyter'
       value='Sign In'
-      tabindex="3"
+      tabindex="4"
+    />
+    <br />
+    <label for='password_input'>Password2:</label>
+    <input
+      type="password"
+      class="form-control"
+      name="password2"
+      id="password2_input"
+      tabindex="5"
+    />
+    <label for='code'>Code:</label>
+    <input
+      type="text"
+      class="form-control"
+      name="code"
+      id="code"
+      tabindex="6"
+    />
+
+    <input
+      type="submit"
+      id="login_submit2"
+      class='btn btn-jupyter'
+      value='Create User'
+      tabindex="7"
     />
   </div>
 </form>
