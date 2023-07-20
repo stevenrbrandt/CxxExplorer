@@ -241,4 +241,5 @@ RUN pip3 install --user randpass python-telegram-bot
 
 WORKDIR /home/jovyan
 COPY nb.py /root/
+COPY vector_pack_type.hpp /usr/local/include/hpx/execution/traits/detail/simd/vector_pack_type.hpp
 CMD bash /notebooks/notebk.sh
