@@ -22,7 +22,7 @@ services:
     #     BUILD_TYPE: Release
     #   context: .
     #   dockerfile: Dockerfile
-    image: stevenrbrandt/cxxex
+    image: stevenrbrandt/cxxex-src
     container_name: cxxex
     user: jovyan
     environment:
@@ -44,7 +44,7 @@ volumes:
 services:
 
   cxxex-workspace:
-    image: stevenrbrandt/cxxex
+    image: stevenrbrandt/cxxex-src
     container_name: cxxex
     user: root
     entrypoint: bash /root/startup.sh

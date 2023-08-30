@@ -1,0 +1,15 @@
+version: '2'
+# Use this file to build the C++Explorer instead of downloading it.
+# docker-compose -f docker-compose.build.yml build --pull
+
+services:
+
+  cxxex-src-workspace:
+    build:
+        args:
+          CPUS: 2
+          BUILD_TYPE: Release
+        context: .
+        dockerfile: Dockerfile.ubuntu
+    image: stevenrbrandt/cxxex-src
+    container_name: cxxex-src-nbk

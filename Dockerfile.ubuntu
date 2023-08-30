@@ -13,7 +13,9 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt update -y && apt install -y bzip2 libhwloc-dev vim git gdb python3 python3-pip \
     libpapi-dev patch cmake libblas-dev liblapack-dev libtbb-dev patch npm \
-    libboost-dev libboost-filesystem-dev \
+    libglew-dev libboost-all-dev \
+    t1-xfree86-nonfree ttf-xfree86-nonfree ttf-xfree86-nonfree-syriac xfonts-75dpi xfonts-100dpi \
+    dpkg-dev cmake g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev imagemagick \
     && apt clean
 
 ARG CPUS
@@ -102,22 +104,29 @@ RUN pip3 install jupyter==1.0.0 jupyterhub==1.0.0 matplotlib numpy termcolor
 ENV DATE 2020-03-10
 RUN mkdir -p /usr/install/cling
 WORKDIR /usr/install/cling
-RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/llvm.git src
-WORKDIR /usr/install/cling/src/tools 
-RUN git clone --depth 1 http://root.cern.ch/git/cling.git
-RUN git clone --depth 1 --branch cling-patches http://root.cern.ch/git/clang.git
+RUN git clone --branch cling-patches http://root.cern.ch/git/llvm.git src
+WORKDIR /usr/install/cling/src
+RUN git checkout ac712f0f44b45a1455a302dd6cbb7b6cce269d2d
+WORKDIR /usr/install/cling/src/tools
+RUN git clone http://root.cern.ch/git/cling.git
+WORKDIR /usr/install/cling/src/tools/cling
+RUN git checkout 2949bf96b71f9301247275a8097a060aae3429f4
+WORKDIR /usr/install/cling/src/tools
+RUN git clone --branch cling-patches http://root.cern.ch/git/clang.git
+WORKDIR /usr/install/cling/src/tools/clang
+RUN git checkout 25f804797f80b69d8c56794e3e0300acd9458958
 
 WORKDIR /usr/install/cling/src/tools/cling
 
 RUN mkdir -p /usr/install/cling/src/build
 COPY Pipe.hpp /usr/local/include/
-#COPY Augment_Kernel.hpp /usr/local/include
-#COPY Kernel.cpp /usr/install/cling/src/tools/cling/tools/Jupyter
+COPY Augment_Kernel.hpp /usr/local/include
+COPY Kernel.cpp /usr/install/cling/src/tools/cling/tools/Jupyter
 
 WORKDIR /usr/install/cling/src/build
 RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_FLAGS='-Wl,-s -std=c++2a' \
+  -DCMAKE_CXX_FLAGS='-Wl,-s' \
   -DLLVM_ENABLE_RTTI=ON \
   -DLLVM_ENABLE_EH=ON \
   /usr/install/cling/src
@@ -147,7 +156,7 @@ WORKDIR /usr
 ##     npm install -g configurable-http-proxy && \
 ##     ln -s /usr/${CLING}/bin/cling /usr/bin/cling
 
-RUN git clone -b 1.8.0 --depth 1 https://github.com/STEllAR-GROUP/hpx.git /hpx
+RUN git clone -b 1.8.1 --depth 1 https://github.com/STEllAR-GROUP/hpx.git /hpx
 WORKDIR /hpx
 RUN mkdir -p /hpx/build
 WORKDIR /hpx/build
@@ -163,8 +172,8 @@ RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
       -DHPX_WITH_MORE_THAN_64_THREADS=ON \
       -DHPX_WITH_MAX_CPU_COUNT=80 \
       -DHPX_WITH_EXAMPLES=Off \
-      -DHPX_WITH_CXX_STANDARD=20 \
-      -DHPX_WITH_DATAPAR_BACKEND=STD_EXPERIMENTAL_SIMD \
+      -DHPX_WITH_CXX_STANDARD=17 \
+      -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
       .. && \
     make -j ${CPUS} install && \
     rm -f $(find . -name \*.o)
@@ -213,7 +222,7 @@ COPY ./jup-config.py jup-config.py
 
 # For authentication if we aren't using OAuth
 RUN git clone -b v1.2 --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
-RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git
+RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git@v1.2
 
 # Use this CMD for a jupyterhub
 # CMD bash startup.sh
@@ -229,6 +238,8 @@ COPY logo.png /usr/local/share/jupyterhub/static/images/
 COPY teleplot.hpp /usr/include
 
 COPY ./Dockerfile /Dockerfile
+# Not sure why this makes sense
+RUN ln -s /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 /usr/lib64/libboost_system.so.1.0.0
 USER jovyan
 
 RUN mkdir -p /home/jovyan/bot
@@ -241,5 +252,6 @@ RUN pip3 install --user randpass python-telegram-bot
 
 WORKDIR /home/jovyan
 COPY nb.py /root/
+COPY hpxcxx /usr/local/bin/
 COPY vector_pack_type.hpp /usr/local/include/hpx/execution/traits/detail/simd/vector_pack_type.hpp
 CMD bash /notebooks/notebk.sh

@@ -21,6 +21,16 @@ then
     echo $CODE > /usr/enable_mkuser
 fi
 
+if [ -r /home/passwd ]
+then
+    cp /home/passwd /etc/passwd
+fi
+
+if [ -r /home/shadow ]
+then
+    cp /home/shadow /etc/shadow
+fi
+
 # Re-create all existing users with the correct id
 # Needed if one mounts a persistent /home because
 # /etc/passwd cannot easily be mounted. So all user
@@ -39,6 +49,7 @@ if [ "$OAUTH_CLIENT_ID" = "" ]
 then
   echo Using invent your own password auth...
   cp /root/cyolauthenticator/docker/*.html /usr/local/share/jupyterhub/templates
+  cp /root/login2.html /usr/local/share/jupyterhub/templates/login.html
 else
   if [ "$CODE" != "" ]
   then

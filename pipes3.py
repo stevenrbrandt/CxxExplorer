@@ -1,10 +1,13 @@
 from subprocess import *
 import sys, os
+from pipes1 import delim, end, delimend
+
 
 def init_cling():
+    import pipes1
     return Popen([
             "python3",
-            "/usr/local/lib/python3.6/site-packages/pipes1.py"
+            pipes1.__file__
         ],
         #bufsize=0,
         stdout=PIPE,
@@ -16,7 +19,7 @@ def readinp(inp):
     inbuf = ''
     while True:
         inbuf += inp.readline()
-        if '$delim$' in inbuf:
+        if delim in inbuf:
             return inbuf
 
 def read_output(p,stream):
@@ -27,9 +30,9 @@ def read_output(p,stream):
         if line is None:
             break
         outbuf += line
-        if "$delim$$end" in outbuf:
-            parts = outbuf.split("$delim$")
-            assert parts[-1] == "$end$\n"
+        if delimend in outbuf:
+            parts = outbuf.split(delim)
+            assert parts[-1] == end+"\n"
             return parts[0:-1]
     os.set_blocking(stream.fileno(), False)
     outbuf += os.read(stream.fileno(),10000).decode()

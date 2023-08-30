@@ -1,0 +1,20 @@
+diff --git a/lib/Interpreter/ForwardDeclPrinter.cpp b/lib/Interpreter/ForwardDeclPrinter.cpp
+index 9e50b16..cfecd74 100644
+--- a/lib/Interpreter/ForwardDeclPrinter.cpp
++++ b/lib/Interpreter/ForwardDeclPrinter.cpp
+@@ -490,6 +490,7 @@ namespace cling {
+         Proto += ")";
+       } else if (FT && isNoexceptExceptionSpec(FT->getExceptionSpecType())) {
+         Proto += " noexcept";
++#if 0
+         if (isComputedNoexcept(FT->getExceptionSpecType())) {
+           Proto += "(";
+           llvm::raw_string_ostream EOut(Proto);
+@@ -501,6 +502,7 @@ namespace cling {
+           //Print was already being called earlier above
+           Proto += ")";
+         }
++#endif
+       }
+
+       if (CDecl) {

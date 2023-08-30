@@ -6,6 +6,7 @@ import inspect
 import ast
 import numpy as np
 import importlib
+from termcolor import colored
 
 load_func = """
 #include <dlfcn.h>
@@ -42,7 +43,7 @@ static inline void *load_func(const char *fun) {
 }
 """
 
-if "JPY_PARENT_PID" in os.environ:
+if type(sys.stdout).__module__ == 'ipykernel.iostream' and type(sys.stdout).__name__ == 'OutStream':
     is_jupyter = True
 else:
     is_jupyter = False
@@ -78,7 +79,7 @@ else:
     else:
         pybind11_header = "[pybind11 install directory]"
 
-flags = "-std=c++14"
+flags = "-std=c++17"
 
 def set_flags(f):
     global flags
@@ -201,6 +202,11 @@ def gettype(ty):
     elif type(ty) == str:
         print(ty)
         raise Exception("?")
+    elif type(ty) == ast.Constant:
+        if ty.value is None:
+            return "void"
+        else:
+            raise Exception()
     else:
         print(ty.func.id)
         print(ty.args,"//",dir(ty.args[0]))
@@ -273,7 +279,7 @@ class fcall:
                 os.close(2)
                 os.dup(save_err)
                 os.close(save_err)
-                print(open(errfile,"r").read(),end='')
+                print(colored(open(errfile,"r").read(),"red"),end='')
         else:
             return self.m.call(*args)
 
@@ -477,14 +483,14 @@ class py11:
 
             with open(fname, "w") as fd:
                 fd.write(src)
-            cmd="g++ {flags} -I{python_header} -I{pybind11_header} -rdynamic -fPIC -shared -o {base}.so {fname}".format(base=base,python_header=python_header,pybind11_header=pybind11_header,flags=flags,fname=fname)
+            cmd="c++ -Wl,--start {flags} -I{python_header} -I{pybind11_header} -rdynamic -fPIC -shared -o {base}.so {fname} -Wl,--end".format(base=base,python_header=python_header,pybind11_header=pybind11_header,flags=flags,fname=fname)
             r = 0
             try:
                 print(cmd)
                 proc = Popen(cmd.split(' '),stdout=PIPE,stderr=PIPE,universal_newlines=True) 
                 outs, errs = proc.communicate()
                 print(outs,end='')
-                print(errs,end='')
+                print(colored(errs,"red"),end='')
                 r = proc.poll()
             except Exception as e:
                 print(e)

@@ -1,0 +1,43 @@
+version: '2'
+
+volumes:
+    # Provide persistent storage for users
+    hpx_home:
+
+services:
+
+  cxxex-server:
+    # Download the full git repo and
+    # uncomment the next lines if you want to build
+    #build:
+    #    args:
+    #      BUILD_TYPE: Release
+    #    context: .
+    #    dockerfile: Dockerfile
+    image: stevenrbrandt/cxxex-src
+    container_name: cxxex-server
+    user: root
+    entrypoint: bash /root/startup.sh
+    privileged: true
+    #entrypoint: sleep infinity
+    environment:
+    # Code needed to create a login. Please edit before starting server.
+      - "CODE=NippedTrains8"
+      - "PORT=443"
+    # Fill in the next lines appropriately for Github authentication.
+    #  - "OAUTH_CLIENT_ID=..."
+    #  - "OAUTH_CLIENT_SECRET=..."
+    #  - "OAUTH_CALLBACK_URL=https://hpx-tutorial.cct.lsu.edu/hub/oauth_callback"
+
+    ports:
+      # If you don't have a cert...
+      #- "8088:80"
+      # If you have a cert...
+      - "443:443"
+    volumes:
+      # The expected cert name: /etc/pki/tls/certs/tutorial.cct.lsu.edu.cer
+      # The expected key name: /etc/pki/tls/private/tutorial.cct.lsu.edu.key
+      # Mount the directory with the cert if you are using a cert
+      - /etc/pki:/etc/pki:Z
+      - hpx_home:/home
+

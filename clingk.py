@@ -20,12 +20,14 @@ from __future__ import print_function
 __version__ = '0.0.3'
 
 import html
+from is_expr import is_expr
 from subprocess import Popen, PIPE
 import ctypes
 from contextlib import contextmanager
 from fcntl import fcntl, F_GETFL, F_SETFL
 import re
 import os
+import pwd
 import shutil
 import select
 import struct
@@ -39,6 +41,75 @@ from ipykernel.ipkernel import IPythonKernel
 from ipykernel.zmqshell import ZMQInteractiveShell
 from IPython.core.profiledir import ProfileDir
 from jupyter_client.session import Session
+
+import numpy as np
+import matplotlib.pyplot as plt
+import base64
+import io
+from contextlib import redirect_stdout, redirect_stderr
+import html
+from traceback import print_exc
+
+data_init = True
+
+def get_data(server,v):
+    global data_init
+    if data_init:
+        data_init = False
+        server.run_cell("#include <fstream>", False)
+    home = os.environ["HOME"]
+    fname = os.path.join(home, ".data.txt")
+    server.run_cell(f""".expr
+    std::ofstream f("{fname}");
+    f << {v};
+    f.close();
+    """,False)
+    with open(fname, "r") as fd:
+        m = []
+        for line in fd.readlines():
+            n = []
+            for g in re.finditer(r'-?[0-9\.eEdD]+', line):
+                n += [float(g.group(0))]
+            m += [n]
+    m = np.array(m)
+    if len(m.shape)==2 and m.shape[1] == 1:
+        m = np.reshape(m,(m.shape[0],))
+    return m
+
+data_cache = {}
+
+def mk_plot(server,s):
+    global data_cache
+    vars = []
+    for g in re.finditer(r'\w+', s):
+        vars += [g.group(0)]
+    txt = ''
+    for y in vars:
+        ydata = get_data(server,y)
+        sh = ydata.shape
+        txt += f"{y} shape is {sh}"
+        data_cache[y] = ydata
+    #home = os.environ["HOME"]
+    #pname = os.path.join(home, "plot.png")
+    #plt.plot(xdata, ydata)
+    #plt.savefig(pname)
+    #with open(pname, "rb") as fd:
+    #    bs = base64.b64encode(fd.read()).decode()
+    #return f"<img src='data:image/png;base64,{bs}' />"
+    return txt
+
+# Expand out ~/ and ~name/
+def fnorm(fname):
+  g = re.match(r'~(\w*)/', fname)
+  if g:
+    if g.group(1)=="":
+      hdir = os.environ.get("HOME", pwd.getpwuid(os.getuid()).pw_dir)
+    else:
+      hdir = pwd.getpwnam(g.group(1)).pw_dir
+    hdir = re.sub(r'/*$', '/', hdir)
+    return hdir+fname[g.end():]
+  else:
+    return fname
 
 
 class my_void_p(ctypes.c_void_p):
@@ -94,9 +165,9 @@ class ClingKernel(Kernel):
     # Used in handle_input()
     flush_interval = Float(0.25, config=True)
 
-    std = CaselessStrEnum(default_value='c++11',
-            values = ['c++11', 'c++14', 'c++1z', 'c++17'],
-            help="C++ standard to use, either c++17, c++1z, c++14 or c++11").tag(config=True);
+    std = CaselessStrEnum(default_value='c++17',
+            values = ['c++1z', 'c++17'],
+            help="C++ standard to use, either c++17, c++1z").tag(config=True);
 
     def __init__(self, **kwargs):
         super(ClingKernel, self).__init__(**kwargs)
@@ -127,19 +198,15 @@ class ClingKernel(Kernel):
 
         for libFolder in ["/lib/libclingJupyter.", "/libexec/lib/libclingJupyter."]:
 
-            bver = 0
-            for fn in os.listdir("/usr/lib64"):
-                g = re.match(r'libboost_system.so.1.(\d+).*',fn)
-                if g:
-                    bver = int(g.group(1))
-            ctypes.CDLL("/usr/lib64/libboost_system.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            ctypes.CDLL("/usr/lib64/libboost_filesystem.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            ctypes.CDLL("/usr/lib64/libboost_program_options.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            ctypes.CDLL("/usr/lib64/libboost_thread.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-            if os.path.exists("/usr/local/lib64/libhpx.so"):
-                ctypes.CDLL("/usr/local/lib64/libhpx.so",ctypes.RTLD_GLOBAL)
+            boost_libdir = "/usr/lib/x86_64-linux-gnu"
+            for fnm in os.listdir(boost_libdir):
+                if fnm.startswith("libboost") and ".so." in fnm:
+                    full_fnm = os.path.join(boost_libdir, fnm)
+                    ctypes.CDLL(full_fnm, ctypes.RTLD_GLOBAL)
+            if os.path.exists("/usr/local/lib/libhpx.so"):
+                ctypes.CDLL("/usr/local/lib/libhpx.so",ctypes.RTLD_GLOBAL)
             else:
-                ctypes.CDLL("/usr/local/lib64/libhpxd.so",ctypes.RTLD_GLOBAL)
+                ctypes.CDLL("/usr/local/lib/libhpxd.so",ctypes.RTLD_GLOBAL)
             for ext in ['so', 'dylib', 'dll']:
                 libFilename = clingInstDir + libFolder + ext
                 if os.access(libFilename, os.R_OK):
@@ -155,7 +222,6 @@ class ClingKernel(Kernel):
 
         self.libclingJupyter.cling_create.restype = my_void_p
         self.libclingJupyter.cling_eval.restype = my_void_p
-        #build -std=c++11 or -std=c++14 option
         stdopt = ("-std=" + self.std).encode('utf-8')
         self.log.info("Using {}".format(stdopt.decode('utf-8')))
         #from IPython.utils import io
@@ -171,6 +237,7 @@ class ClingKernel(Kernel):
                 b"-lboost_program_options",
                 b"-lboost_system",
                 b"-lpthread",
+                b"-I/usr/local/include/BlazeIterative",
 		b"-I" + clingInstDir.encode('utf-8') + b"/include/"
 		]
         if os.path.exists("/usr/local/lib64/libhpx.so"):
@@ -293,6 +360,10 @@ class ClingKernel(Kernel):
 
     def run_cell(self, code, silent=False):
         """Run code in cling, storing the expression result or an empty string if there is none."""
+        if re.match(r'^\s*\.expr', code):
+            pass
+        elif is_expr(code):
+            code = ".expr "+code
         self.stringResult = self.libclingJupyter.cling_eval(self.interp, ctypes.c_char_p(code.encode('utf8')))
 
     def do_execute(self, code, silent, store_history=True,
@@ -333,6 +404,63 @@ class ClingKernel(Kernel):
                         },
                         parent=self._parent_header
                     )
+            elif g.group(1)=="" and g.group(2)=="load":
+                fname = fnorm(g.group(3).strip())
+                try:
+                    content = open(fname, "r").read()
+                except Exception as e:
+                    # There's probably a better way
+                    # to do this.
+                    content = str(e)
+
+                data = {
+                    'status':'ok',
+                    'execution_count':self.execution_count,
+                    'payload': [{
+                      'source': 'set_next_input',
+                      'replace': True,
+                      'text':'%%writefile '+fname+'\n'+re.sub(r'\n$','',content)
+                    }],
+                    'user_expressions':{}
+                }
+                return data
+
+            elif g.group(1)=="" and g.group(2)=="png":
+                fname = fnorm(g.group(3).strip())
+                try:
+                    with open(fname, "rb") as fd:
+                        bs = base64.b64encode(fd.read()).decode()
+                    plotString = f"<img src='data:image/png;base64,{bs}' />"
+                    self.session.send(
+                        self.iopub_socket,
+                        'execute_result',
+                        content={
+                            'data': {
+                                'text/html': plotString
+                            },
+                            'metadata': {},
+                            'execution_count': self.execution_count,
+                        },
+                        parent=self._parent_header
+                    )
+                except Exception as e:
+                    # There's probably a better way
+                    # to do this.
+                    outs = str(e)
+                    self.session.send(
+                        self.iopub_socket,
+                        'execute_result',
+                        content={
+                            'data': {
+                                'text/plain': outs
+                            },
+                            'metadata': {},
+                            'execution_count': self.execution_count,
+                        },
+                        parent=self._parent_header
+                    )
+
+
             elif g.group(1)=="%" and g.group(2)=="bash":
                 p = Popen(["bash"], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
                 body = codes[g.end():].strip()+'\n'
@@ -344,6 +472,53 @@ class ClingKernel(Kernel):
                         'data': {
                             'text/html': '<pre>'+html.escape(outs)+'</pre>'+
                                          '<pre style="color: red">'+html.escape(errs)+'</pre>'
+                        },
+                        'metadata': {},
+                        'execution_count': self.execution_count,
+                    },
+                    parent=self._parent_header
+                )
+            elif g.group(1)=="%" and g.group(2)=="plot":
+                # yyy
+                body = codes[g.end():].strip()+'\n'
+                buf = io.StringIO()
+                bufe = io.StringIO()
+                with redirect_stdout(buf):
+                    with redirect_stderr(bufe):
+                        try:
+                            exec(body,globals(),data_cache)
+                        except:
+                            print_exc()
+                        err_output = bufe.getvalue()
+                    std_output = buf.getvalue()
+                outString = "<pre>"+std_output+"\n"+err_output+"</pre>"
+                home = os.environ["HOME"]
+                pname = os.path.join(home, "plot.png")
+                #plt.plot(xdata, ydata)
+                plt.savefig(pname)
+                with open(pname, "rb") as fd:
+                    bs = base64.b64encode(fd.read()).decode()
+                plotString = outString + f"<img src='data:image/png;base64,{bs}' />"
+                self.session.send(
+                    self.iopub_socket,
+                    'execute_result',
+                    content={
+                        'data': {
+                            'text/html': plotString
+                        },
+                        'metadata': {},
+                        'execution_count': self.execution_count,
+                    },
+                    parent=self._parent_header
+                )
+            elif g.group(1)=="" and g.group(2)=="data":
+                plotString = mk_plot(self, g.group(3))
+                self.session.send(
+                    self.iopub_socket,
+                    'execute_result',
+                    content={
+                        'data': {
+                            'text/plain': plotString
                         },
                         'metadata': {},
                         'execution_count': self.execution_count,
