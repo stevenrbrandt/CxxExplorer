@@ -7,7 +7,7 @@ services:
   cxxex-src-workspace:
     build:
         args:
-          CPUS: 8
+          CPUS: 2
           BUILD_TYPE: Release
         context: .
         dockerfile: Dockerfile.ubuntu

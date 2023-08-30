@@ -172,8 +172,7 @@ RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
       -DHPX_WITH_MORE_THAN_64_THREADS=ON \
       -DHPX_WITH_MAX_CPU_COUNT=80 \
       -DHPX_WITH_EXAMPLES=Off \
-      -DHPX_WITH_CXX_STANDARD=20 \
-      -DHPX_WITH_DATAPAR_BACKEND=STD_EXPERIMENTAL_SIMD \
+      -DHPX_WITH_CXX_STANDARD=17 \
       -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
       .. && \
     make -j ${CPUS} install && \
@@ -254,4 +253,5 @@ RUN pip3 install --user randpass python-telegram-bot
 WORKDIR /home/jovyan
 COPY nb.py /root/
 COPY hpxcxx /usr/local/bin/
+COPY vector_pack_type.hpp /usr/local/include/hpx/execution/traits/detail/simd/vector_pack_type.hpp
 CMD bash /notebooks/notebk.sh
