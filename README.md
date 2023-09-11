@@ -81,3 +81,7 @@ services:
       # - cert_file:/etc/pki/tls/certs/tutorial.cct.lsu.edu.cer
       # - key_file:/etc/pki/tls/private/tutorial.cct.lsu.edu.key
 ```
+
+## References
+
+* P. Diehl and S. R. Brandt, Interactive C++ code development using C++Explorer and GitHub Classroom for educational purposes, In Proceedings of Gateways 2020, Science Gateways Community Institute (SGCI), [Link](https://osf.io/qbtj3/)

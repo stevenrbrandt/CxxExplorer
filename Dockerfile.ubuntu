@@ -99,7 +99,7 @@ ENV LD_LIBRARY_PATH /home/jovyan/install/phylanx/lib64:/usr/local/lib64:/home/jo
 USER root
 #RUN dnf install -y nodejs psmisc tbb-devel
 RUN pip3 install --upgrade pip
-RUN pip3 install jupyter==1.0.0 jupyterhub==1.0.0 matplotlib numpy termcolor
+RUN pip3 install jupyter jupyterhub matplotlib numpy termcolor
 
 ENV DATE 2020-03-10
 RUN mkdir -p /usr/install/cling
