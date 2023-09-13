@@ -177,6 +177,26 @@ RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
       .. && \
     make -j ${CPUS} install && \
     rm -f $(find . -name \*.o)
+RUN mkdir -p /hpx/build2
+WORKDIR /hpx/build2
+#RUN env CXX=$(which clang++) cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DHPX_FILESYSTEM_WITH_BOOST_FILESYSTEM_COMPATIBILITY=ON \
+      -DHPX_WITH_CXX17_HARDWARE_DESTRUCTIVE_INTERFERENCE_SIZE=OFF \
+      -DHPX_WITH_FETCH_ASIO=ON \
+      -DHPX_WITH_BUILTIN_INTEGER_PACK=OFF \
+      -DHPX_WITH_ITTNOTIFY=OFF \
+      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
+      -DHPX_WITH_MALLOC=system \
+      -DHPX_WITH_MORE_THAN_64_THREADS=ON \
+      -DHPX_WITH_MAX_CPU_COUNT=80 \
+      -DHPX_WITH_EXAMPLES=Off \
+      -DHPX_WITH_CXX_STANDARD=20 \
+      -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
+      -DCMAKE_INSTALL_PREFIX=/usr/local/hpx-corot \
+      .. && \
+    make -j ${CPUS} install && \
+    rm -f $(find . -name \*.o)
 
 ## RUN (make -j 8 install 2>&1 | tee make.out)
 COPY ./run_hpx.cpp /usr/include/run_hpx.cpp
