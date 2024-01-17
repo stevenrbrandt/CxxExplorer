@@ -24,10 +24,14 @@ class cling:
             g = re.match(r'libboost_system.so.1.(\d+).*',fn)
             if g:
                 bver = int(g.group(1))
-        ctypes.CDLL("/usr/lib64/libboost_system.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-        ctypes.CDLL("/usr/lib64/libboost_filesystem.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-        ctypes.CDLL("/usr/lib64/libboost_program_options.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
-        ctypes.CDLL("/usr/lib64/libboost_thread.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
+        #ctypes.CDLL("/usr/lib64/libboost_system.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
+        #ctypes.CDLL("/usr/lib64/libboost_filesystem.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
+        ctypes.CDLL("/usr/lib/x86_64-linux-gnu/libboost_system.so", ctypes.RTLD_GLOBAL)
+        ctypes.CDLL("/usr/lib/x86_64-linux-gnu/libboost_filesystem.so", ctypes.RTLD_GLOBAL)
+        ctypes.CDLL("/usr/lib/x86_64-linux-gnu/libboost_program_options.so", ctypes.RTLD_GLOBAL)
+        ctypes.CDLL("/usr/lib/x86_64-linux-gnu/libboost_thread.so", ctypes.RTLD_GLOBAL)
+        #ctypes.CDLL("/usr/lib64/libboost_program_options.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
+        #ctypes.CDLL("/usr/lib64/libboost_thread.so.1.%d.0" % bver,ctypes.RTLD_GLOBAL)
         if os.path.exists("/usr/local/lib64/libhpx.so"):
             ctypes.CDLL("/usr/local/lib64/libhpx.so",ctypes.RTLD_GLOBAL)
             flags = [b"-lhpx"]
