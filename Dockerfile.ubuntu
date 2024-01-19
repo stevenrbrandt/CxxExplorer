@@ -217,10 +217,12 @@ RUN chmod 755 /usr/local/bin/mkuser
 RUN pip3 install tornado #==5.1.1 # There's a bug in newer versions
 COPY ./clingk.py /usr/${CLING}/share/cling/Jupyter/kernel/clingkernel.py
 RUN python3 -c 'import sys; print(sys.path[-1])' > /tmp/path.txt
+COPY ./find.py ${PYTHONPATH}/
 COPY ./pipes1.py ${PYTHONPATH}/
 COPY ./pipes3.py ${PYTHONPATH}/
 COPY ./cling.py ${PYTHONPATH}/
 COPY ./py11.py ${PYTHONPATH}/
+RUN python3 ${PYTHONPATH}/find.py > /usr/hpx-libs.txt
 #RUN cp /Python-${PYVER}/pyconfig.h /Python-${PYVER}/Include
 #RUN ln -s /Python-${PYVER}/Include /usr/include/python${PYVER}
 WORKDIR /

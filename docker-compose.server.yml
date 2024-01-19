@@ -13,7 +13,7 @@ services:
         args:
           BUILD_TYPE: Release
         context: .
-        dockerfile: Dockerfile
+        dockerfile: Dockerfile.ubuntu
     image: stevenrbrandt/cxxex-src
     container_name: cxxex-server
     user: root
