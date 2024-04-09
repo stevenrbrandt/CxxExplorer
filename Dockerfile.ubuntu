@@ -87,16 +87,11 @@ RUN git clone --depth 1 https://github.com/STEllAR-GROUP/blaze_tensor.git && \
     rm -f $(find . -name \*.o)
 
 WORKDIR /etc/skel
-COPY ./notebooks/*.ipynb ./
+#COPY ./notebooks/*.ipynb ./
 #RUN git clone --depth 1 https://github.com/shortcourse/USACM16-shortcourse
 RUN git clone --depth 1 https://github.com/shortcourse/WCCM-APCOM-22
 RUN find . | xargs -d '\n' chmod +r
 
-RUN useradd -m jovyan -s /bin/bash
-USER jovyan
-WORKDIR /home/jovyan
-ENV LD_LIBRARY_PATH /home/jovyan/install/phylanx/lib64:/usr/local/lib64:/home/jovyan/install/phylanx/lib/phylanx:/usr/lib64/openmpi/lib
-USER root
 #RUN dnf install -y nodejs psmisc tbb-devel
 RUN pip3 install --upgrade pip
 RUN pip3 install jupyter jupyterhub matplotlib numpy termcolor
@@ -257,13 +252,20 @@ COPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkern
 RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
 #RUN dnf install -y ImageMagick file hostname
 COPY is_expr.py /usr/local/python
+COPY cin.py /usr/local/python
 COPY logo.png /usr/local/share/jupyterhub/static/images/
 COPY teleplot.hpp /usr/include
 
 COPY ./Dockerfile /Dockerfile
 # Not sure why this makes sense
 RUN ln -s /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 /usr/lib64/libboost_system.so.1.0.0
+RUN python3 -m pip install piraha
+
+COPY ./notebooks/*.ipynb /etc/skel/
+RUN useradd -m jovyan -s /bin/bash
 USER jovyan
+WORKDIR /home/jovyan
+ENV LD_LIBRARY_PATH /home/jovyan/install/phylanx/lib64:/usr/local/lib64:/home/jovyan/install/phylanx/lib/phylanx:/usr/lib64/openmpi/lib
 
 RUN mkdir -p /home/jovyan/bot
 COPY bot/cxxbot.py /home/jovyan/bot/

@@ -7,7 +7,8 @@ import html
 import inspect
 import re
 from pipes1 import delim
-from is_expr import is_expr
+#from is_expr import is_expr
+from cin import hpxify
 
 results = {}
 
@@ -72,8 +73,13 @@ def cling(line, code):
         code = replvar(code, caller)
         if code.startswith(".expr "):
             pass
-        elif is_expr(code):
-            code = ".expr "+code
+        #elif is_expr(code):
+        #    code = ".expr "+code
+        code, use_hpx, has_main, msg = hpxify(code)
+        if "$debug=true" in code:
+            print("HPXIFY:",code)
+            print("USE HPX:",use_hpx)
+            print("MSG:",msg)
         history += [code]
         pinterp.stdin.write(code+delim+"\n")
         pinterp.stdin.flush()
@@ -95,3 +101,28 @@ def cling(line, code):
             results[line2.strip()] = res
     except Exception as e:
         print_exc()
+
+cling("","""
+
+#include <run_hpx.cpp>
+#include <functional>
+
+// The Fibonacci function written using hpx async
+int fib(int n) {
+    if(n < 2) return n;
+
+    // launch a thread
+    hpx::future<int> f1 = hpx::async(hpx::launch::async, fib,n-1);
+
+    // do work while the thread is running
+    int f2 = fib(n-2);
+
+    // wait for the thread to complete
+    return f1.get() + f2;
+}""")
+cling("","""
+{
+    int n=10;
+    std::cout << "fib(" << n << ")=" << fib(n) << "x" << std::endl;
+}
+""")

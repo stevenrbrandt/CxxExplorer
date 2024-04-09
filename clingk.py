@@ -20,7 +20,8 @@ from __future__ import print_function
 __version__ = '0.0.3'
 
 import html
-from is_expr import is_expr
+#from is_expr import is_expr
+from cin import hpxify
 from subprocess import Popen, PIPE
 import ctypes
 from contextlib import contextmanager
@@ -171,6 +172,7 @@ class ClingKernel(Kernel):
 
     def __init__(self, **kwargs):
         super(ClingKernel, self).__init__(**kwargs)
+        self.using_hpx = False
         clingInPath = shutil.which('cling')
         if not clingInPath:
             from distutils.spawn import find_executable
@@ -363,8 +365,22 @@ class ClingKernel(Kernel):
         """Run code in cling, storing the expression result or an empty string if there is none."""
         if re.match(r'^\s*\.expr', code):
             pass
-        elif is_expr(code):
-            code = ".expr "+code
+        #elif is_expr(code):
+        #    code = ".expr "+code
+        code, use_hpx, has_main, outs = hpxify(code)
+        if "$debug=true" in code:
+            self.session.send(
+                self.iopub_socket,
+                'execute_result',
+                content={
+                    'data': {
+                        'text/plain': outs,
+                    },
+                    'metadata': {},
+                    'execution_count': self.execution_count,
+                },
+                parent=self._parent_header
+            )
         self.stringResult = self.libclingJupyter.cling_eval(self.interp, ctypes.c_char_p(code.encode('utf8')))
 
     def do_execute(self, code, silent, store_history=True,
