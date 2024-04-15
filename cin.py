@@ -22,7 +22,7 @@ astuff=([^{}()\[\]";<>]+|{paren}|{brak}|{quote}|{curl}|{char}|< {astuff}+ >)
 
 tfunc=template {angle} {func}
 tclass=template {angle} {class}
-func=(static|) (inline|) {type} {name} {paren} {curl}
+func=(static|) (inline|) {type} {name} {paren} {curl} 
 class=(struct|class) {name} (: {type}( , {type})* |){curl} ;
 declargs=({paren}|{curl}|)
 
@@ -75,11 +75,12 @@ def parse_cxx(cinput):
         return m.gr, outs
     else:
         # Show a helpful error message
-        print(cinput)
+        #print(cinput)
         s = StringIO()
         m.showError(s)
         s.seek(0)
-        return None, s.read()
+        erm = s.read()
+        return None, erm
 
 code_wrap = """
 struct foo__%d_ {
@@ -161,8 +162,27 @@ class CodeGen:
 
 cgen = CodeGen()
 
+prior_defs = dict()
+
+def redef(symbol):
+    val = prior_defs.get(symbol, None)
+    if val is None:
+        prior_defs[symbol] = 1
+        return ""
+    elif val == 1:
+        prior_defs[symbol] += 1
+        return f"#define {symbol} {symbol}_redef__{val}\n"
+    else:
+        prior_defs[symbol] += 1
+        return f"#undef {symbol}\n#define {symbol} {symbol}_redef__{val}\n"
+
 def hpxify(cinput):
     global use_hpx, code_num
+
+    # Backwards compatible with older versions of the C++Explorer
+    if cinput.startswith(".expr"):
+        cinput = "{" + cinput[5:] + "}"
+
     m, outs = parse_cxx(cinput)
     #print("Parse Tree:",m.dump())
     if m is None:
@@ -171,9 +191,18 @@ def hpxify(cinput):
     has_main = False
     for g in m.children:
         pn = g.getPatternName()
-        if pn == "func":
-            if g.children[1].substring() == "main":
+        if pn in ["func", "tfunc", "class", "tclass"]:
+            func_name = g.children[1].substring()
+            code += redef(func_name)
+            if pn == "func" and func_name == "main":
                 has_main = True
+        elif pn == "stmt": # and use_hpx:
+            for g2 in g.children:
+               pn2 = g2.getPatternName()
+               if pn2 in ["lambda_assign", "curl_assign", "assign", "decl"]:
+                   var_name = g2.children[1].substring()
+                   code += redef(var_name)
+
     for g in m.children:
         pn = g.getPatternName()
         txt = g.substring()
@@ -280,25 +309,19 @@ for(int i=0;i<10;i++) cout << vd[i] << " "; cout << std::endl;
             print(src)
             print("outs<<",outs,">>")
             src, a, b, outs = hpxify("""
-// Usage of the new expression to generate an array of integers
-int *dvalues = new int[5];
+#include <hpx/hpx.hpp>
+#include <unistd.h>
+#include <stdlib.h>
+#include <iostream>
+#include <vector>
+#include <functional>
+typedef std::vector<int>::iterator viter;
 
-// Usage of the placement new for struct and classes
-struct point {
-  double x,y,z;
-
-  point (double x0=0, double y0=0, double z0=0) {
-     x = x0; y = y0; z = z0;
-  }
-};
-
-point *vec = new point();
-
-// Releasing the allocate double array
-delete[] dvalues;
-
-// Releasing the allocated struct
-delete vec;
+            """)
+            print(src)
+            print("outs<<",outs,">>")
+            src, a, b, outs = hpxify("""
+=foo
             """)
             print(src)
             print("outs<<",outs,">>")

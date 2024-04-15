@@ -368,7 +368,7 @@ class ClingKernel(Kernel):
         #elif is_expr(code):
         #    code = ".expr "+code
         code, use_hpx, has_main, outs = hpxify(code)
-        if "$debug=true" in code:
+        if "$debug=true" in code or "ERROR" in outs:
             self.session.send(
                 self.iopub_socket,
                 'execute_result',

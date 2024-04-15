@@ -259,7 +259,7 @@ COPY teleplot.hpp /usr/include
 COPY ./Dockerfile /Dockerfile
 # Not sure why this makes sense
 RUN ln -s /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 /usr/lib64/libboost_system.so.1.0.0
-RUN python3 -m pip install piraha
+RUN python3 -m pip install piraha==1.1.7
 
 COPY ./notebooks/*.ipynb /etc/skel/
 RUN useradd -m jovyan -s /bin/bash
