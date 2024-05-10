@@ -2,13 +2,32 @@ import pipes3
 
 from traceback import print_exc
 from IPython.core.magic import register_cell_magic
-from IPython.display import display, HTML
+from IPython.display import display, HTML, Image
 import html
 import inspect
 import re
 from pipes1 import delim
 #from is_expr import is_expr
 from cin import hpxify
+import os
+from subprocess import Popen, PIPE
+
+def show_images():
+    for fn in os.listdir("."):
+        if fn.endswith(".pbm"):
+            img = fn[:-4]+".png"
+            if (not os.path.exists(img)) or os.stat(fn).st_mtime > os.stat(img).st_mtime:
+                p = Popen(["convert", fn, img], stdout=PIPE, stderr=PIPE, universal_newlines=True)
+                o, e = p.communicate()
+                if os.path.exists(img):
+                    display(HTML("<h2>Image file generated: "+img+"</h2>"))
+                    display(Image(img))
+
+
+@register_cell_magic
+def bash(line, cell):
+    get_ipython().system(cell)
+    show_images()
 
 results = {}
 
@@ -101,8 +120,11 @@ def cling(line, code):
             results[line2.strip()] = res
     except Exception as e:
         print_exc()
+    finally:
+        show_images()
 
-cling("","""
+if __name__ == "__main__":
+    cling("","""
 
 #include <run_hpx.cpp>
 #include <functional>
@@ -120,7 +142,7 @@ int fib(int n) {
     // wait for the thread to complete
     return f1.get() + f2;
 }""")
-cling("","""
+    cling("","""
 {
     int n=10;
     std::cout << "fib(" << n << ")=" << fib(n) << "x" << std::endl;

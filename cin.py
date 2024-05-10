@@ -27,6 +27,7 @@ class=(struct|class) {name} (: {type}( , {type})* |){curl} ;
 declargs=({paren}|{curl}|)
 
 rhs = {stuff}+
+array_decl={type} {name} \[ {stuff} \]( = {curl}|) ;
 decl={type} {name} {declargs} ;
 ns = namespace {name}( :: {name})*( = {name}( :: {name})* ;| {curl})
 lambda_rhs={brak} {paren} (-> {type} |){curl}
@@ -41,7 +42,7 @@ while=while \({stuff}\) {stmt}
 expr={stuff}+ ;
 call={name}( :: {name})* {paren} ;
 del=delete {stuff} ;
-stmt=({for}|{if}|{while}|{ns}|{del}|{decl}|{lambda_assign}|{curl_assign}|{assign}|{curl}|{macro}|{call}|{curl}|{expr})
+stmt=({for}|{if}|{while}|{ns}|{del}|{array_decl}|{decl}|{lambda_assign}|{curl_assign}|{assign}|{curl}|{macro}|{call}|{curl}|{expr})
 macro=[A-Z][_A-Z]+ {paren}( ;|)
 using=using {rhs} ;
 typedef=typedef {rhs} ;
@@ -102,45 +103,35 @@ class CodeGen:
 
     def add(self, pn, g):
        if pn in ["lambda_assign", "curl_assign", "assign"]:
-           code_num = self.code_num
            vtype = g.children[0].substring()
            vname = g.children[1].substring()
-           if len(self.wrapping_vars) == 0:
-               subclass = ""
+           rhs = g.children[2].substring()
+           if "future" in vtype or ".get()" in rhs or ".then(" in rhs or "hpx" in rhs:
+               return f"{vtype} {vname} = run_hpx([](){{ return {rhs}; }});\n"
            else:
-               subclass = f": public wrapping_{code_num}__"
-           self.code_num += 1
-           code_num = self.code_num
-           self.wrapping_vars += [(vtype, vname)]
-           return f"struct wrapping_{code_num}__ {subclass} {{ {g.substring()} }};\n"
+               return g.substring()+"\n"
        elif pn == "decl":
-           code_num = self.code_num
            vtype = g.children[0].substring()
            vname = g.children[1].substring()
            vargs = g.children[2].substring()
-           if len(self.wrapping_vars) == 0:
-               subclass = ""
+           if "future" in vtype or ".get()" in vargs or ".then(" in vargs or "hpx" in vargs:
+               return f"{vtype} {vname} = run_hpx([](){{ return {vtype}({vargs}); }});"
            else:
-               subclass = f": public wrapping_{code_num}__"
-           self.code_num += 1
-           code_num = self.code_num
-           self.wrapping_vars += [(vtype, vname)]
-           wr = f"wrapping_{code_num}__"
-           return f"struct {wr} {subclass} {{ {vtype} {vname}; {wr}() : {vname}({vargs}){{}}  }};\n"
+               return g.substring()
        elif pn in ["expr", "call", "for", "if", "curl", "del"]:
            code_num = self.code_num
-           if len(self.wrapping_vars) == 0:
-               subclass = ""
-           else:
-               subclass = f": public wrapping_{code_num}__"
            self.code_num += 1
            code_num = self.code_num
            self.wrapping_vars += [None]
-           return f"struct wrapping_{code_num}__ {subclass} {{ wrapping_{code_num}__() {{ {g.substring()} }} }};\n"
+           if use_hpx:
+              return f"struct wrapping_{code_num}__ {{ wrapping_{code_num}__() {{ run_hpx([]() {{ {g.substring()} }}); }} }} wrapping_{code_num}__var__ ;\n"
+           else:
+              return f"struct wrapping_{code_num}__ {{ wrapping_{code_num}__() {{ {g.substring()} }} }} wrapping_{code_num}__var__ ;\n"
        else:
-           return g.substring()+"\n" + self.flush()
+           return g.substring()+self.flush()
 
     def flush(self):
+       return "\n"
        code = ""
        if len(self.wrapping_vars) > 0:
           code_num = self.code_num
@@ -188,25 +179,36 @@ def hpxify(cinput):
     if m is None:
         return cinput, use_hpx, False, outs
     code = ""
+    inc_run_hpx = False
     has_main = False
     for g in m.children:
         pn = g.getPatternName()
-        if pn in ["func", "tfunc", "class", "tclass"]:
+        if pn in ["func", "tfunc"]:
             func_name = g.children[1].substring()
             code += redef(func_name)
             if pn == "func" and func_name == "main":
                 has_main = True
+        elif pn in ["class", "tclass"]:
+            class_name = g.children[0].substring()
+            code += redef(class_name)
         elif pn == "stmt": # and use_hpx:
             for g2 in g.children:
                pn2 = g2.getPatternName()
-               if pn2 in ["lambda_assign", "curl_assign", "assign", "decl"]:
+               if pn2 in ["lambda_assign", "curl_assign", "assign", "decl", "array_decl"]:
                    var_name = g2.children[1].substring()
                    code += redef(var_name)
 
     for g in m.children:
         pn = g.getPatternName()
         txt = g.substring()
-        if pn == "stmt": # and use_hpx:
+        if pn in ["directive"]:
+            code += g.substring()+"\n"
+            if (not use_hpx) and "hpx" in g.substring():
+                use_hpx = True
+            if (not inc_run_hpx) and "hpx" in g.substring():
+                inc_run_hpx = True
+                code += "#include <run_hpx.cpp>\n"
+        elif pn == "stmt": # and use_hpx:
             for g2 in g.children:
                pn2 = g2.getPatternName()
                if pn2 in ["lambda_assign", "curl_assign", "assign", "decl"]:
@@ -309,19 +311,12 @@ for(int i=0;i<10;i++) cout << vd[i] << " "; cout << std::endl;
             print(src)
             print("outs<<",outs,">>")
             src, a, b, outs = hpxify("""
-#include <hpx/hpx.hpp>
-#include <unistd.h>
-#include <stdlib.h>
-#include <iostream>
-#include <vector>
-#include <functional>
-typedef std::vector<int>::iterator viter;
-
+struct A { int a; };
             """)
             print(src)
             print("outs<<",outs,">>")
             src, a, b, outs = hpxify("""
-=foo
+struct A { int b; };
             """)
             print(src)
             print("outs<<",outs,">>")
