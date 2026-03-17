@@ -50,9 +50,17 @@ c.Spawner.debug = True
 c.LocalProcessSpawner.debug = True
 
 # If the port is set to 443, a key & cert should be mounted in the container.
+cert_pairs = [
+        ('/etc/pki/tls/private/hpx-tutorial.cct.lsu.edu.key', '/etc/pki/tls/certs/hpx-tutorial.cct.lsu.edu.cer'),
+        ('/etc/pki/tls/private/tutorial.cct.lsu.edu.key', '/etc/pki/tls/certs/tutorial.cct.lsu.edu.cer'),
+        ('/etc/ssl/private/etk.cct.lsu.edu.key', '/etc/ssl/certs/etk.cct.lsu.edu.cer')
+        ]
 if os.environ["PORT"] == "443":
-    c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/tutorial.cct.lsu.edu.cer'
-    c.JupyterHub.ssl_key =  '/etc/pki/tls/private/tutorial.cct.lsu.edu.key'
+    for p_key, p_cert in cert_pairs:
+        if os.path.exists(p_key):
+            c.JupyterHub.ssl_cert = p_cert
+            c.JupyterHub.ssl_key =  p_key
+            break
 
 if 'BASE_URL' in os.environ:
     c.JupyterHub.base_url = os.environ['BASE_URL'] #'/hpx/'

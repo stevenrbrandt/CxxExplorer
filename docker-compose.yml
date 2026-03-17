@@ -7,15 +7,15 @@ volumes:
 services:
 
   cxxex-src-workspace:
-    image: stevenrbrandt/cxxex-src
+    image: stevenrbrandt/cxxex-src:2026
     container_name: cxxex-src-nbk
     user: jovyan
     entrypoint: bash /notebooks/notebk.sh
     #entrypoint: sleep infinity
     environment:
-      - "PORT=8004"
-      - "SECRET_TOKEN=spoon"
+      - "PORT=8080"
+      - "SECRET_TOKEN="
     ports:
-      - "9080:8004"
+      - "8004:8080"
     #volumes:
     #  - nbk_home:/home

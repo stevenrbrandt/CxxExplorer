@@ -96,187 +96,191 @@ RUN find . | xargs -d '\n' chmod +r
 RUN pip3 install --upgrade pip
 RUN pip3 install jupyter jupyterhub matplotlib numpy termcolor
 
-ENV DATE 2020-03-10
-RUN mkdir -p /usr/install/cling
-WORKDIR /usr/install/cling
-RUN git clone --branch cling-patches http://root.cern.ch/git/llvm.git src
-WORKDIR /usr/install/cling/src
-RUN git checkout ac712f0f44b45a1455a302dd6cbb7b6cce269d2d
-WORKDIR /usr/install/cling/src/tools
-RUN git clone http://root.cern.ch/git/cling.git
-WORKDIR /usr/install/cling/src/tools/cling
-RUN git checkout 2949bf96b71f9301247275a8097a060aae3429f4
-WORKDIR /usr/install/cling/src/tools
-RUN git clone --branch cling-patches http://root.cern.ch/git/clang.git
-WORKDIR /usr/install/cling/src/tools/clang
-RUN git checkout 25f804797f80b69d8c56794e3e0300acd9458958
+#ENV DATE 2020-03-10
+#RUN mkdir -p /usr/install/cling
+#WORKDIR /usr/install/cling
+#RUN git clone --branch cling-patches http://root.cern.ch/git/llvm.git src
+#WORKDIR /usr/install/cling/src
+#RUN git checkout ac712f0f44b45a1455a302dd6cbb7b6cce269d2d
+#WORKDIR /usr/install/cling/src/tools
+#RUN git clone http://root.cern.ch/git/cling.git
+#WORKDIR /usr/install/cling/src/tools/cling
+#RUN git checkout 2949bf96b71f9301247275a8097a060aae3429f4
+#WORKDIR /usr/install/cling/src/tools
+#RUN git clone --branch cling-patches http://root.cern.ch/git/clang.git
+#WORKDIR /usr/install/cling/src/tools/clang
+#RUN git checkout 25f804797f80b69d8c56794e3e0300acd9458958
+RUN apt install -y conda
+RUN conda config --set channel_priority strict
+RUN conda create -c conda-forge --name rootenv root
+RUN conda activate rootenv
 
-WORKDIR /usr/install/cling/src/tools/cling
+### ORKDIR /usr/install/cling/src/tools/cling
 
-RUN mkdir -p /usr/install/cling/src/build
-COPY Pipe.hpp /usr/local/include/
-COPY Augment_Kernel.hpp /usr/local/include
-COPY Kernel.cpp /usr/install/cling/src/tools/cling/tools/Jupyter
+### UN mkdir -p /usr/install/cling/src/build
+### OPY Pipe.hpp /usr/local/include/
+### OPY Augment_Kernel.hpp /usr/local/include
+### OPY Kernel.cpp /usr/install/cling/src/tools/cling/tools/Jupyter
 
-WORKDIR /usr/install/cling/src/build
-RUN cmake -DCMAKE_INSTALL_PREFIX=/usr \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_FLAGS='-Wl,-s' \
-  -DLLVM_ENABLE_RTTI=ON \
-  -DLLVM_ENABLE_EH=ON \
-  /usr/install/cling/src
-# RUN dnf install -y patch
-WORKDIR /usr/install/cling/src
-COPY limits.patch .
-RUN patch -p1 < limits.patch
-WORKDIR /usr/install/cling/src/tools/cling
-COPY noexcept.patch ./
-RUN patch -p1 < noexcept.patch
-WORKDIR /usr/install/cling/src/build
-COPY make.sh /usr/install/cling/src/build/
-RUN bash ./make.sh
-RUN  cd /usr/install/cling/src/tools/cling/tools/Jupyter/kernel && \
-  pip3 install -e . && \
-  jupyter-kernelspec install cling-cpp17 && \
-  npm install -g configurable-http-proxy 
-WORKDIR /usr
-## ENV CLING cling_2020-11-05_ROOT-fedora32
-## ENV CLING_TARBALL ${CLING}.tar.bz2
-## RUN curl -LO https://root.cern/download/cling/${CLING_TARBALL} && \
-##     tar xjf ${CLING_TARBALL} && \
-##     rm -f ${CLING_TARBALL}
-## WORKDIR /usr/${CLING}/share/cling/Jupyter/kernel
-## RUN pip3 install -e . && \
-##     jupyter-kernelspec install cling-cpp17 && \
-##     npm install -g configurable-http-proxy && \
-##     ln -s /usr/${CLING}/bin/cling /usr/bin/cling
+### ORKDIR /usr/install/cling/src/build
+### UN cmake -DCMAKE_INSTALL_PREFIX=/usr \
+###  -DCMAKE_BUILD_TYPE=Release \
+###  -DCMAKE_CXX_FLAGS='-Wl,-s' \
+###  -DLLVM_ENABLE_RTTI=ON \
+###  -DLLVM_ENABLE_EH=ON \
+###  /usr/install/cling/src
+###  RUN dnf install -y patch
+### ORKDIR /usr/install/cling/src
+### OPY limits.patch .
+### UN patch -p1 < limits.patch
+### ORKDIR /usr/install/cling/src/tools/cling
+### OPY noexcept.patch ./
+### UN patch -p1 < noexcept.patch
+### ORKDIR /usr/install/cling/src/build
+### OPY make.sh /usr/install/cling/src/build/
+### UN bash ./make.sh
+### UN  cd /usr/install/cling/src/tools/cling/tools/Jupyter/kernel && \
+###  pip3 install -e . && \
+###  jupyter-kernelspec install cling-cpp17 && \
+###  npm install -g configurable-http-proxy 
+### ORKDIR /usr
+### # ENV CLING cling_2020-11-05_ROOT-fedora32
+### # ENV CLING_TARBALL ${CLING}.tar.bz2
+### # RUN curl -LO https://root.cern/download/cling/${CLING_TARBALL} && \
+### #     tar xjf ${CLING_TARBALL} && \
+### #     rm -f ${CLING_TARBALL}
+### # WORKDIR /usr/${CLING}/share/cling/Jupyter/kernel
+### # RUN pip3 install -e . && \
+### #     jupyter-kernelspec install cling-cpp17 && \
+### #     npm install -g configurable-http-proxy && \
+### #     ln -s /usr/${CLING}/bin/cling /usr/bin/cling
 
-RUN git clone -b 1.8.1 --depth 1 https://github.com/STEllAR-GROUP/hpx.git /hpx
-WORKDIR /hpx
-RUN mkdir -p /hpx/build
-WORKDIR /hpx/build
-#RUN env CXX=$(which clang++) cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-      -DHPX_FILESYSTEM_WITH_BOOST_FILESYSTEM_COMPATIBILITY=ON \
-      -DHPX_WITH_CXX17_HARDWARE_DESTRUCTIVE_INTERFERENCE_SIZE=OFF \
-      -DHPX_WITH_FETCH_ASIO=ON \
-      -DHPX_WITH_BUILTIN_INTEGER_PACK=OFF \
-      -DHPX_WITH_ITTNOTIFY=OFF \
-      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
-      -DHPX_WITH_MALLOC=system \
-      -DHPX_WITH_MORE_THAN_64_THREADS=ON \
-      -DHPX_WITH_MAX_CPU_COUNT=80 \
-      -DHPX_WITH_EXAMPLES=Off \
-      -DHPX_WITH_CXX_STANDARD=17 \
-      -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
-      .. && \
-    make -j ${CPUS} install && \
-    rm -f $(find . -name \*.o)
-RUN mkdir -p /hpx/build2
-WORKDIR /hpx/build2
-#RUN env CXX=$(which clang++) cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-RUN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-      -DHPX_FILESYSTEM_WITH_BOOST_FILESYSTEM_COMPATIBILITY=ON \
-      -DHPX_WITH_CXX17_HARDWARE_DESTRUCTIVE_INTERFERENCE_SIZE=OFF \
-      -DHPX_WITH_FETCH_ASIO=ON \
-      -DHPX_WITH_BUILTIN_INTEGER_PACK=OFF \
-      -DHPX_WITH_ITTNOTIFY=OFF \
-      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
-      -DHPX_WITH_MALLOC=system \
-      -DHPX_WITH_MORE_THAN_64_THREADS=ON \
-      -DHPX_WITH_MAX_CPU_COUNT=80 \
-      -DHPX_WITH_EXAMPLES=Off \
-      -DHPX_WITH_CXX_STANDARD=20 \
-      -DHPX_WITH_DATAPAR_BACKEND=STD_EXPERIMENTAL_SIMD \
-      -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
-      -DCMAKE_INSTALL_PREFIX=/usr/local/hpx-corot \
-      .. && \
-    make -j ${CPUS} install && \
-    rm -f $(find . -name \*.o)
+### UN git clone -b 1.8.1 --depth 1 https://github.com/STEllAR-GROUP/hpx.git /hpx
+### ORKDIR /hpx
+### UN mkdir -p /hpx/build
+### ORKDIR /hpx/build
+### RUN env CXX=$(which clang++) cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+### UN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+###      -DHPX_FILESYSTEM_WITH_BOOST_FILESYSTEM_COMPATIBILITY=ON \
+###      -DHPX_WITH_CXX17_HARDWARE_DESTRUCTIVE_INTERFERENCE_SIZE=OFF \
+###      -DHPX_WITH_FETCH_ASIO=ON \
+###      -DHPX_WITH_BUILTIN_INTEGER_PACK=OFF \
+###      -DHPX_WITH_ITTNOTIFY=OFF \
+###      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
+###      -DHPX_WITH_MALLOC=system \
+###      -DHPX_WITH_MORE_THAN_64_THREADS=ON \
+###      -DHPX_WITH_MAX_CPU_COUNT=80 \
+###      -DHPX_WITH_EXAMPLES=Off \
+###      -DHPX_WITH_CXX_STANDARD=17 \
+###      -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
+###      .. && \
+###    make -j ${CPUS} install && \
+###    rm -f $(find . -name \*.o)
+### UN mkdir -p /hpx/build2
+### ORKDIR /hpx/build2
+### RUN env CXX=$(which clang++) cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+### UN cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+###      -DHPX_FILESYSTEM_WITH_BOOST_FILESYSTEM_COMPATIBILITY=ON \
+###      -DHPX_WITH_CXX17_HARDWARE_DESTRUCTIVE_INTERFERENCE_SIZE=OFF \
+###      -DHPX_WITH_FETCH_ASIO=ON \
+###      -DHPX_WITH_BUILTIN_INTEGER_PACK=OFF \
+###      -DHPX_WITH_ITTNOTIFY=OFF \
+###      -DHPX_WITH_THREAD_COMPATIBILITY=ON \
+###      -DHPX_WITH_MALLOC=system \
+###      -DHPX_WITH_MORE_THAN_64_THREADS=ON \
+###      -DHPX_WITH_MAX_CPU_COUNT=80 \
+###      -DHPX_WITH_EXAMPLES=Off \
+###      -DHPX_WITH_CXX_STANDARD=20 \
+###      -DHPX_WITH_DATAPAR_BACKEND=STD_EXPERIMENTAL_SIMD \
+###      -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
+###      -DCMAKE_INSTALL_PREFIX=/usr/local/hpx-corot \
+###      .. && \
+###    make -j ${CPUS} install && \
+###    rm -f $(find . -name \*.o)
 
-## RUN (make -j 8 install 2>&1 | tee make.out)
-COPY ./run_hpx.cpp /usr/include/run_hpx.cpp
-RUN chmod 644 /usr/include/run_hpx.cpp
+### # RUN (make -j 8 install 2>&1 | tee make.out)
+### OPY ./run_hpx.cpp /usr/include/run_hpx.cpp
+### UN chmod 644 /usr/include/run_hpx.cpp
 
-RUN pip3 install oauthenticator
-#RUN dnf install -y procps cppcheck python3-pycurl sqlite python3-libs
-COPY ./login.html /usr/local/share/jupyterhub/templates/login.html
-COPY ./login2.html /root
-COPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/
+### UN pip3 install oauthenticator
+### RUN dnf install -y procps cppcheck python3-pycurl sqlite python3-libs
+### OPY ./login.html /usr/local/share/jupyterhub/templates/login.html
+### OPY ./login2.html /root
+### OPY ./stellar-logo.png /usr/local/share/jupyterhub/static/images/
 
-ENV PYTHONPATH /usr/local/python
-RUN mkdir -p /usr/local/python
-COPY ./mkuser.py ${PYTHONPATH}/mkuser.py
-COPY ./mkuser.py /usr/local/bin/mkuser
-RUN chmod 755 /usr/local/bin/mkuser
-RUN pip3 install tornado #==5.1.1 # There's a bug in newer versions
-COPY ./clingk.py /usr/${CLING}/share/cling/Jupyter/kernel/clingkernel.py
-RUN python3 -c 'import sys; print(sys.path[-1])' > /tmp/path.txt
-COPY ./find.py ${PYTHONPATH}/
-COPY ./pipes1.py ${PYTHONPATH}/
-COPY ./pipes3.py ${PYTHONPATH}/
-COPY ./cling.py ${PYTHONPATH}/
-COPY ./py11.py ${PYTHONPATH}/
-RUN python3 ${PYTHONPATH}/find.py > /usr/hpx-libs.txt
-#RUN cp /Python-${PYVER}/pyconfig.h /Python-${PYVER}/Include
-#RUN ln -s /Python-${PYVER}/Include /usr/include/python${PYVER}
-WORKDIR /
+### NV PYTHONPATH /usr/local/python
+### UN mkdir -p /usr/local/python
+### OPY ./mkuser.py ${PYTHONPATH}/mkuser.py
+### OPY ./mkuser.py /usr/local/bin/mkuser
+### UN chmod 755 /usr/local/bin/mkuser
+### UN pip3 install tornado #==5.1.1 # There's a bug in newer versions
+### OPY ./clingk.py /usr/${CLING}/share/cling/Jupyter/kernel/clingkernel.py
+### UN python3 -c 'import sys; print(sys.path[-1])' > /tmp/path.txt
+### OPY ./find.py ${PYTHONPATH}/
+### OPY ./pipes1.py ${PYTHONPATH}/
+### OPY ./pipes3.py ${PYTHONPATH}/
+### OPY ./cling.py ${PYTHONPATH}/
+### OPY ./py11.py ${PYTHONPATH}/
+### UN python3 ${PYTHONPATH}/find.py > /usr/hpx-libs.txt
+### RUN cp /Python-${PYVER}/pyconfig.h /Python-${PYVER}/Include
+### RUN ln -s /Python-${PYVER}/Include /usr/include/python${PYVER}
+### ORKDIR /
 
-RUN git clone --depth 1 https://github.com/STEllAR-GROUP/BlazeIterative
-WORKDIR /BlazeIterative/build
-RUN cmake ..
-RUN make install
+### UN git clone --depth 1 https://github.com/STEllAR-GROUP/BlazeIterative
+### ORKDIR /BlazeIterative/build
+### UN cmake ..
+### UN make install
 
-# For some reason, HPX will not link in @py11() unless I do this
-RUN ldconfig /usr/local/lib64
+###  For some reason, HPX will not link in @py11() unless I do this
+### UN ldconfig /usr/local/lib64
 
-WORKDIR /notebooks
-COPY ./notebk.sh ./
+### ORKDIR /notebooks
+### OPY ./notebk.sh ./
 
-WORKDIR /root
-RUN chmod 755 .
-COPY ./startup.sh startup.sh
-COPY ./jup-config.py jup-config.py
+### ORKDIR /root
+### UN chmod 755 .
+### OPY ./startup.sh startup.sh
+### OPY ./jup-config.py jup-config.py
 
-# For authentication if we aren't using OAuth
-RUN git clone -b v1.2 --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
-RUN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git@v1.2
+###  For authentication if we aren't using OAuth
+### UN git clone -b v1.2 --depth 1 https://github.com/stevenrbrandt/cyolauthenticator.git
+### UN pip3 install git+https://github.com/stevenrbrandt/cyolauthenticator.git@v1.2
 
-# Use this CMD for a jupyterhub
-# CMD bash startup.sh
+###  Use this CMD for a jupyterhub
+###  CMD bash startup.sh
 
-COPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkernel.py
-# RUN ln -s /usr/${CLING}/lib/libclingJupyter.so /usr/lib/libclingJupyter.so
-# RUN ln -s /usr/${CLING}/lib/clang /usr/lib/clang
-# RUN ln -s /usr/${CLING}/include/cling /usr/include/cling
-RUN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
-#RUN dnf install -y ImageMagick file hostname
-COPY is_expr.py /usr/local/python
-COPY cin.py /usr/local/python
-COPY logo.png /usr/local/share/jupyterhub/static/images/
-COPY teleplot.hpp /usr/include
+### OPY clingk.py /usr/install/cling/src/tools/cling/tools/Jupyter/kernel/clingkernel.py
+###  RUN ln -s /usr/${CLING}/lib/libclingJupyter.so /usr/lib/libclingJupyter.so
+###  RUN ln -s /usr/${CLING}/lib/clang /usr/lib/clang
+###  RUN ln -s /usr/${CLING}/include/cling /usr/include/cling
+### UN echo "export PYTHONPATH=${PYTHONPATH}" >> /etc/bashrc
+### RUN dnf install -y ImageMagick file hostname
+### OPY is_expr.py /usr/local/python
+### OPY cin.py /usr/local/python
+### OPY logo.png /usr/local/share/jupyterhub/static/images/
+### OPY teleplot.hpp /usr/include
 
-COPY ./Dockerfile /Dockerfile
-# Not sure why this makes sense
-RUN ln -s /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 /usr/lib64/libboost_system.so.1.0.0
-RUN python3 -m pip install piraha==1.1.7
+### OPY ./Dockerfile /Dockerfile
+###  Not sure why this makes sense
+### UN ln -s /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 /usr/lib64/libboost_system.so.1.0.0
+### UN python3 -m pip install piraha==1.1.7
 
-COPY ./notebooks/*.ipynb /etc/skel/
-RUN useradd -m jovyan -s /bin/bash
-USER jovyan
-WORKDIR /home/jovyan
-ENV LD_LIBRARY_PATH /home/jovyan/install/phylanx/lib64:/usr/local/lib64:/home/jovyan/install/phylanx/lib/phylanx:/usr/lib64/openmpi/lib
+### OPY ./notebooks/*.ipynb /etc/skel/
+### UN useradd -m jovyan -s /bin/bash
+### SER jovyan
+### ORKDIR /home/jovyan
+### NV LD_LIBRARY_PATH /home/jovyan/install/phylanx/lib64:/usr/local/lib64:/home/jovyan/install/phylanx/lib/phylanx:/usr/lib64/openmpi/lib
 
-RUN mkdir -p /home/jovyan/bot
-COPY bot/cxxbot.py /home/jovyan/bot/
-COPY bot/teleplot.py /home/jovyan/bot/
-COPY bot/telecling.py /home/jovyan/bot/
-COPY bot/thumbsup.png /home/jovyan/bot/
-COPY bot/colored.py /home/jovyan/bot/
-RUN pip3 install --user randpass python-telegram-bot
+### UN mkdir -p /home/jovyan/bot
+### OPY bot/cxxbot.py /home/jovyan/bot/
+### OPY bot/teleplot.py /home/jovyan/bot/
+### OPY bot/telecling.py /home/jovyan/bot/
+### OPY bot/thumbsup.png /home/jovyan/bot/
+### OPY bot/colored.py /home/jovyan/bot/
+### UN pip3 install --user randpass python-telegram-bot
 
-WORKDIR /home/jovyan
-COPY nb.py /root/
-COPY hpxcxx /usr/local/bin/
-COPY vector_pack_type.hpp /usr/local/include/hpx/execution/traits/detail/simd/vector_pack_type.hpp
-CMD bash /notebooks/notebk.sh
+### ORKDIR /home/jovyan
+### OPY nb.py /root/
+### OPY hpxcxx /usr/local/bin/
+### OPY vector_pack_type.hpp /usr/local/include/hpx/execution/traits/detail/simd/vector_pack_type.hpp
+### MD bash /notebooks/notebk.sh

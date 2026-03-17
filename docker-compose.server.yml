@@ -14,7 +14,7 @@ services:
     #      BUILD_TYPE: Release
     #    context: .
     #    dockerfile: Dockerfile.ubuntu
-    image: stevenrbrandt/cxxex-src
+    image: stevenrbrandt/cxxex-src:2026
     container_name: cxxex-server
     user: root
     entrypoint: bash /root/startup.sh
@@ -33,11 +33,11 @@ services:
       # If you don't have a cert...
       #- "8088:80"
       # If you have a cert...
-      - "443:443"
+      - "8004:443"
     volumes:
       # The expected cert name: /etc/pki/tls/certs/tutorial.cct.lsu.edu.cer
       # The expected key name: /etc/pki/tls/private/tutorial.cct.lsu.edu.key
       # Mount the directory with the cert if you are using a cert
-      - /etc/pki:/etc/pki:Z
+      - ./etc/ssl:/etc/ssl:Z
       - hpx_home:/home
 
