@@ -1,4 +1,4 @@
-FROM fedora
+FROM fedora:40
 RUN dnf install -y gcc-c++ gcc make git \
     bzip2 hwloc-devel blas blas-devel lapack lapack-devel boost-devel \
     libatomic which vim-enhanced wget zlib-devel cmake \
@@ -89,7 +89,7 @@ WORKDIR /home/jovyan
 USER root
 #RUN dnf install -y nodejs psmisc tbb-devel
 RUN pip3 install --upgrade pip
-RUN pip3 install jupyter matplotlib numpy termcolor oauthenticator==15.1.0 jupyterhub==4.1.5
+RUN pip3 install jupyter matplotlib numpy termcolor oauthenticator==15.1.0 jupyterhub==4.1.5 cffi==1.16.0
 
 #ENV DATE 2020-03-10
 #RUN mkdir -p /usr/install/cling
