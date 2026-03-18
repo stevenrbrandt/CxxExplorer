@@ -324,6 +324,9 @@ RUN jupyter nbconvert --clear-output --inplace /etc/skel/*.ipynb
 # RUN pip install -e .
 # RUN jupyter-kernelspec install cling-cpp17  # Repeat for cling-cpp11, cling-cpp14 if needed
 
+RUN cp /usr/local/share/jupyterhub/static/images/stellar-logo.png /usr/local/share/jupyterhub/static/images/logo.png
+COPY  hpsf-logo.png /usr/local/share/jupyterhub/static/images/hpsf-logo.png
+
 USER jovyan
 WORKDIR /home/jovyan
 RUN cp /etc/skel/* .
