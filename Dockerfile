@@ -326,6 +326,7 @@ RUN jupyter nbconvert --clear-output --inplace /etc/skel/*.ipynb
 
 RUN cp /usr/local/share/jupyterhub/static/images/stellar-logo.png /usr/local/share/jupyterhub/static/images/logo.png
 COPY  hpsf-logo.png /usr/local/share/jupyterhub/static/images/hpsf-logo.png
+COPY WCCM-APCOM-22/slides/* /etc/skel/
 
 USER jovyan
 WORKDIR /home/jovyan
