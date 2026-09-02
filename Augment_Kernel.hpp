@@ -1,12 +1,20 @@
 ///-----------------------------------
 /// Inserted code
+#include <cstdio>
+#include <csignal>
+#include <fcntl.h>
+#include <sys/types.h>
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
+
 int parent = getpid();
 int child = -1;
 int child2 = -1;
 
 const char *FAIL="~**FAIL**~";
 
-const int trapio_buf_siz = 10000;
+const int trapio_buf_siz = 1000000;
 
 std::string fname(int fd,int pid) {
     std::ostringstream fname;
@@ -60,11 +68,26 @@ sig_exit(int sig_num)
 	exit(0);
 }
 
+int cling_worker_pid() {
+    return child;
+}
+
+static bool jupyter_parent_alive() {
+    return parent > 1 && kill(parent, 0) == 0;
+}
+
 char* cling_eval(TheMetaProcessor *metaProc, const char *code) {
     bool good = false;
     char *result = 0;
     if(child < 0) {
         child = fork();
+        if(child == 0) {
+#ifdef __linux__
+            prctl(PR_SET_PDEATHSIG, SIGKILL);
+#endif
+            if (!jupyter_parent_alive())
+                _exit(0);
+        }
     }
     if(child == 0) {
         signal(SIGINT , sig_exit);
@@ -74,8 +97,12 @@ char* cling_eval(TheMetaProcessor *metaProc, const char *code) {
         signal(SIGSEGV, sig_exit);
         signal(SIGTERM , sig_exit);
         while(true) {
+            if (!jupyter_parent_alive())
+                _exit(0);
             Pipe chan2;
             char *code_c = code_chan.read("code");
+            if (!code_c)
+                _exit(0);
             child2 = fork();
             if(child2 == 0) {
                 TrapIO fd1(1), fd2(2);
@@ -137,14 +164,30 @@ char* cling_eval(TheMetaProcessor *metaProc, const char *code) {
     } else {
         code_chan.write(code);
         int pid = chan.readInt();
+        if (pid == -2) {
+            child = -1;
+            return nullptr;
+        }
 
         result = chan.read("stdout");
+        if (!result) {
+            child = -1;
+            return nullptr;
+        }
         std::cout << result << std::flush;
 
         result = chan.read("stderr");
+        if (!result) {
+            child = -1;
+            return nullptr;
+        }
         std::cerr << result << std::flush;
 
         result = chan.read("result");
+        if (!result) {
+            child = -1;
+            return nullptr;
+        }
 
         if(pid == child || pid == 0) {
             ;

@@ -1,15 +1,17 @@
-version: '2'
-# Use this file to build the C++Explorer instead of downloading it.
-# docker-compose -f docker-compose.build.yml build --pull
+# Build C++Explorer. CPU count must come from lscpu (nproc is 1 when
+# OMP_NUM_THREADS=1). Prefer: bash ./b.sh
+#
+#   CPUS=$(lscpu | awk '/^CPU\(s\):/{print $2}')
+#   docker compose -f docker-compose.build.yml build --build-arg CPUS=$CPUS
 
 services:
 
   cxxex-src-workspace:
     build:
         args:
-          CPUS: 2
+          CPUS: 8
           BUILD_TYPE: Release
         context: .
-        dockerfile: Dockerfile.ubuntu
+        dockerfile: Dockerfile
     image: stevenrbrandt/cxxex-src
     container_name: cxxex-src-nbk

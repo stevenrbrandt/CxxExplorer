@@ -98,58 +98,63 @@ use_hpx = False
 
 class CodeGen:
     def __init__(self):
-        self.wrapping_vars = list()
+        self.pending_stmts = []
         self.code_num = 0
+
+    def _hpxish(self, text):
+       # Include typedef-hidden HPX types (e.g. executor_type) so construction
+       # does not run as a global initializer before the runtime is started.
+       keys = ("future", ".get()", ".then(", "hpx", "execution::",
+               "executor", "block_executor", "compute::", "host_targets")
+       return any(k in text for k in keys)
 
     def add(self, pn, g):
        if pn in ["lambda_assign", "curl_assign", "assign"]:
            vtype = g.children[0].substring()
            vname = g.children[1].substring()
            rhs = g.children[2].substring()
-           if "future" in vtype or ".get()" in rhs or ".then(" in rhs or "hpx" in rhs:
-               return f"{vtype} {vname} = run_hpx([](){{ return {rhs}; }});\n"
-           else:
-               return g.substring()+"\n"
+           # Keep HPX assignments as globals so later cells can see them.
+           # Initialize inside cxxex_cell (process() after .L) instead of a
+           # global initializer — that path hits Cling ORC static-init failures
+           # on parallel algorithms.
+           if use_hpx and (self._hpxish(vtype) or self._hpxish(rhs)):
+               if "auto" in vtype:
+                   decl = f"decltype({rhs}) {vname};\n"
+               else:
+                   decl = f"{vtype} {vname};\n"
+               self.pending_stmts.append(f"{vname} = {rhs};")
+               return decl
+           out = self.flush()
+           if self._hpxish(vtype) or self._hpxish(rhs):
+               return out + f"{vtype} {vname} = run_hpx([](){{ return {rhs}; }});\n"
+           return out + g.substring()+"\n"
        elif pn == "decl":
-           vtype = g.children[0].substring()
-           vname = g.children[1].substring()
-           vargs = g.children[2].substring()
-           if "future" in vtype or ".get()" in vargs or ".then(" in vargs or "hpx" in vargs:
-               return f"{vtype} {vname} = run_hpx([](){{ return {vtype}({vargs}); }});"
-           else:
-               return g.substring()
+           # Emit the global now but do not flush pending statements: a later
+           # `hpx::fill` in the same cell must share the run_hpx() that
+           # constructs executor_type, because run_hpx starts and stops HPX
+           # per call.
+           return g.substring() + "\n"
        elif pn in ["expr", "call", "for", "if", "curl", "del"]:
-           code_num = self.code_num
-           self.code_num += 1
-           code_num = self.code_num
-           self.wrapping_vars += [None]
-           if use_hpx:
-              return f"struct wrapping_{code_num}__ {{ wrapping_{code_num}__() {{ run_hpx([]() {{ {g.substring()} }}); }} }} wrapping_{code_num}__var__ ;\n"
-           else:
-              return f"struct wrapping_{code_num}__ {{ wrapping_{code_num}__() {{ {g.substring()} }} }} wrapping_{code_num}__var__ ;\n"
+           self.pending_stmts.append(g.substring())
+           return ""
        else:
-           return g.substring()+self.flush()
+           return self.flush() + g.substring()
 
     def flush(self):
-       return "\n"
-       code = ""
-       if len(self.wrapping_vars) > 0:
-          code_num = self.code_num
-          code += f"wrapping_{code_num}__ *inner_{code_num}__ = "
-          if use_hpx:
-              code +=  "run_hpx([](){ "
-              code += f" return new wrapping_{code_num}__(); "
-              code +=  "});\n"
-          else:
-              code += f" new wrapping_{code_num}__(); "
-          for vv in self.wrapping_vars:
-              if vv is None:
-                  continue
-              else:
-                  code += f"{vv[0]} {vv[1]} = std::move(inner_{code_num}__->{vv[1]});\n"
-          #code += f"delete inner_{code_num}__;\n"
-          self.wrapping_vars = list()
-       return code
+       if not self.pending_stmts:
+           return "\n"
+       self.code_num += 1
+       n = self.code_num
+       body = "\n".join(self.pending_stmts)
+       self.pending_stmts = []
+       # Define a function and ask Kernel.cpp to process() the call after .L.
+       # Global constructors that invoke HPX parallel algorithms fail in Cling's
+       # ORC runStaticInitializersOnce; a later process() call does not.
+       if use_hpx:
+           return (f"void cxxex_cell_{n}() {{ run_hpx([]() {{ {body} }}); }}\n"
+                   f"// CXXEX_RUN cxxex_cell_{n}\n")
+       return (f"void cxxex_cell_{n}() {{ {body} }}\n"
+               f"// CXXEX_RUN cxxex_cell_{n}\n")
 
 cgen = CodeGen()
 
@@ -212,19 +217,7 @@ def hpxify(cinput):
             for g2 in g.children:
                pn2 = g2.getPatternName()
                if pn2 in ["lambda_assign", "curl_assign", "assign", "decl"]:
-                   if "auto" in g2.children[0].substring():
-                       code += cgen.flush()
-                       if pn2 == "assign":
-                           code += g2.children[0].substring()+" "
-                           code += g2.children[1].substring()+" = "
-                           if use_hpx:
-                               code += "run_hpx([](){ return " + g2.children[2].substring() + ";});\n"
-                           else:
-                               code += g2.children[2].substring() + ";\n"
-                       else:
-                           code += g2.substring()+"\n"
-                   else:
-                       code += cgen.add(pn2, g2)
+                   code += cgen.add(pn2, g2)
                    #vtype = g2.children[0].substring()
                    #vname = g2.children[1].substring()
                    #if len(wrapping_vars) == 0:

@@ -1,4 +1,4 @@
-#! /usr/bin/python3.10
+#! /usr/bin/python3
 #
 # Copyright (c) 2014 Steven R. Brandt
 #
@@ -35,12 +35,14 @@ if "HPX_LOCATION" in os.environ:
     pkgconfpath += [
         os.path.join(os.environ["HPX_LOCATION"],"lib","pkgconfig")]
 pkgconfpath += [
-    os.path.join("/usr/local/hpx-corot","lib","pkgconfig"),     # install directory
-    os.path.join("/usr/local/hpx-corot","lib64","pkgconfig"),     # install directory
+    os.path.join("/usr/local","lib","pkgconfig"),
+    os.path.join("/usr/local","lib64","pkgconfig"),
+    os.path.join("/usr/local/hpx-corot","lib","pkgconfig"),
+    os.path.join("/usr/local/hpx-corot","lib64","pkgconfig"),
     os.path.join(os.path.dirname(sys.argv[0]),"..","lib","pkgconfig"),
     os.path.join("opt","hpx","lib","pkgconfig"),
-    os.path.join("/usr","bin","hpx","lib","pkgconfig"),
-    os.path.join("/usr","local","corot","bin","hpx","lib","pkgconfig"),
+    os.path.join("/usr","lib","pkgconfig"),
+    os.path.join("/usr","lib64","pkgconfig"),
     os.path.join(os.environ["HOME"],"install","hpx","lib","pkgconfig"),
     os.path.join(os.environ["HOME"],"hpx","lib","pkgconfig")
     ]
@@ -108,7 +110,7 @@ while i < len(sys.argv):
 pkgconf = None
 for path in pkgconfpath:
     found = False
-    for suffix in [pkgconf_suffix, "_release", "_relwithdebuginfo","_debug"]:
+    for suffix in [pkgconf_suffix, "", "_release", "_relwithdebinfo", "_relwithdebuginfo","_debug"]:
         hpath = os.path.join(path,"hpx_application")+suffix+".pc"
         if os.path.exists(hpath):
             pkgconf = path

@@ -23,6 +23,9 @@ public:
         close(pipe_fd[0]);
         close(pipe_fd[1]);
     }
+    int rfd() const { return pipe_fd[0]; }
+    int wfd() const { return pipe_fd[1]; }
+
     void writeInt(int n) {
         ::write(pipe_fd[1], &n, sizeof(n));
     }
@@ -52,20 +55,27 @@ public:
         return n;
     }
 
+    // Returns -2 on EOF (the other end closed, e.g. Jupyter parent died).
     int readInt(const char *msg="") {
         int n = 0;
-        ::read(pipe_fd[0], &n, sizeof(n));
+        ssize_t r = ::read(pipe_fd[0], &n, sizeof(n));
+        if (r == 0)
+            return -2;
+        if (r != (ssize_t)sizeof(n))
+            return -1;
         return n;
     }
     char *read(const char *msg="") {
         int n = readInt(msg);
+        if (n == -2)
+            return nullptr;
         if(n < 0) {
             n = strlen(RD_TMOUT);
             char *s = (char *)malloc(sizeof(char)*(n+1));
             strcpy(s, RD_TMOUT);
             return s;
         }
-        assert(n < 10000);
+        assert(n >= 0 && n < 16 * 1024 * 1024);
         char *s = (char *)malloc(sizeof(char)*(n+1));
         ::read(pipe_fd[0], s, n);
         s[n] = 0;

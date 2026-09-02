@@ -19,12 +19,14 @@
 #include "cling/Interpreter/Exception.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <cctype>
 #include <map>
 #include <string>
 #include <cstring>
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <vector>
 
 #include <Pipe.hpp>
 #include <sys/wait.h>
@@ -139,51 +141,141 @@ const char *expr = ".expr";
 const int nexpr = strlen(expr);
 int sequence = 0;
 
+namespace {
+
+std::string trim_ws(std::string s) {
+  while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))
+    s.pop_back();
+  std::size_t i = 0;
+  while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i])))
+    ++i;
+  return s.substr(i);
+}
+
+bool is_blank(const std::string& s) {
+  for (unsigned char c : s) {
+    if (!std::isspace(c))
+      return false;
+  }
+  return true;
+}
+
+struct CxxexChunk {
+  std::string tu;
+  std::string run;
+};
+
+// cin.py emits `void cxxex_cell_N() { ... }` followed by `// CXXEX_RUN cxxex_cell_N`.
+// Loading that as a TU and running the body from a global constructor trips LLVM
+// ORC `runStaticInitializersOnce` on HPX parallel-algorithm templates. Split those
+// markers into `.L` (define) then `process("name();")` (execute).
+std::vector<CxxexChunk> split_cxxex_runs(const std::string& code) {
+  std::vector<CxxexChunk> chunks;
+  std::string cur;
+  std::istringstream in(code);
+  std::string line;
+  const std::string marker = "CXXEX_RUN ";
+  while (std::getline(in, line)) {
+    auto cpos = line.find("//");
+    auto mpos = line.find(marker);
+    if (cpos != std::string::npos && mpos != std::string::npos && mpos >= cpos) {
+      std::string name = trim_ws(line.substr(mpos + marker.size()));
+      auto sp = name.find_first_of(" \t");
+      if (sp != std::string::npos)
+        name.resize(sp);
+      chunks.push_back({cur, name});
+      cur.clear();
+    } else {
+      cur += line;
+      cur += '\n';
+    }
+  }
+  if (!cur.empty() || chunks.empty())
+    chunks.push_back({cur, ""});
+  return chunks;
+}
+
+bool load_tu_and_run(cling::MetaProcessor *M, const std::string& path,
+                     const CxxexChunk& ch, cling::Value& V,
+                     cling::Interpreter::CompilationResult& Res) {
+  if (!is_blank(ch.tu)) {
+    std::ofstream cfile(path);
+    cfile << ch.tu;
+    if (!cfile)
+      return false;
+    cfile.close();
+    std::string cmd = ".L " + path;
+    if (M->process(cmd.c_str(), Res, &V, /*disableValuePrinting*/ true)) {
+      std::cout << "Incomplete input! Ignored." << std::endl;
+      M->cancelContinuation();
+      return false;
+    }
+    if (Res != cling::Interpreter::kSuccess)
+      return false;
+  }
+  if (!ch.run.empty()) {
+    std::string call = ch.run + "();";
+    cling::Value VR;
+    if (M->process(call.c_str(), Res, &VR, /*disableValuePrinting*/ true)) {
+      std::cout << "Incomplete input! Ignored." << std::endl;
+      M->cancelContinuation();
+      return false;
+    }
+    if (Res != cling::Interpreter::kSuccess)
+      return false;
+    if (VR.isValid())
+      V = VR;
+  }
+  return true;
+}
+
+} // namespace
+
 /// Evaluate a string of code. Returns nullptr on failure.
 /// Returns a string representation of the expression (can be "") on success.
 char* cling_eval_inner(TheMetaProcessor *metaProc, const char *code,bool& good) {
   cling::MetaProcessor *M = (cling::MetaProcessor*)metaProc;
   cling::Value V;
-  cling::Interpreter::CompilationResult Res;
+  cling::Interpreter::CompilationResult Res = cling::Interpreter::kSuccess;
   bool isExcept = false;
   try {
     good = 0;
-    std::ostringstream cmd;
+    const char *home = getenv("HOME");
+    if (!home || !home[0])
+      home = "/tmp";
     std::ostringstream fname;
-  	fname << getenv("HOME") << "/.code" << (sequence++) << ".cc";
-  	std::ofstream cfile(fname.str());
-    if(strncmp(code,expr,nexpr) == 0) {
-        cfile << "struct __tmp__" << sequence << " {" << std::endl;
-
-        // constructor
-        cfile << "__tmp__" << sequence << " (){" << std::endl;
-        cfile << "#ifdef WRAP_EXPR" << std::endl;
-        cfile << "WRAP_EXPR(init();)" << std::endl;
-        cfile << "#else" << std::endl;
-        cfile << "init();" << std::endl;
-        cfile << "#endif" << std::endl;
-        cfile << "}" << std::endl;
-
-        cfile << "static void init() {" << std::endl;
-	    cfile << (code+nexpr) << std::endl;
-        cfile << "}" << std::endl;
-
-        cfile << "} __tmp__instance__" << sequence << ";" << std::endl;
+    fname << home << "/.code" << (sequence++);
+    std::string source;
+    if (strncmp(code, expr, nexpr) == 0) {
+      std::ostringstream wrapped;
+      wrapped << "void __cxxex_expr_" << sequence << "() {\n";
+      wrapped << "#ifdef WRAP_EXPR\n";
+      wrapped << "WRAP_EXPR({\n" << (code + nexpr) << "\n});\n";
+      wrapped << "#else\n";
+      wrapped << (code + nexpr) << "\n";
+      wrapped << "#endif\n";
+      wrapped << "}\n// CXXEX_RUN __cxxex_expr_" << sequence << "\n";
+      source = wrapped.str();
     } else {
-   	    cfile << code << std::endl;
+      source = code ? code : "";
+      if (source.empty() || source.back() != '\n')
+        source += '\n';
     }
-   	cfile.close();
- 	cmd << ".L " << fname.str();
-    std::string cmdstr = cmd.str();
-    if (M->process(cmdstr.c_str(), Res, &V, /*disableValuePrinting*/ true)) {
-      //cling::Jupyter::pushOutput({{"text/html", "Incomplete input! Ignored."}});
-      std::cout << "Incomplete input! Ignored." << std::endl;
-      M->cancelContinuation();
-      return nullptr;
+
+    auto chunks = split_cxxex_runs(source);
+    for (std::size_t i = 0; i < chunks.size(); ++i) {
+      const CxxexChunk& ch = chunks[i];
+      if (is_blank(ch.tu) && ch.run.empty())
+        continue;
+      std::string path = fname.str() + "-" + std::to_string(i) + ".cc";
+      if (!load_tu_and_run(M, path, ch, V, Res)) {
+        good = 0;
+        if (Res != cling::Interpreter::kSuccess)
+          return nullptr;
+        return nullptr;
+      }
     }
-    std::string fstr = fname.str();
-    //unlink(fstr.c_str());
-    good = (Res == 0);
+    good = (Res == cling::Interpreter::kSuccess);
   }
   catch(cling::InterpreterException& e) {
     //std::string output (strcat("Caught an interpreter exception:", e.what().c_str())) ;
@@ -212,7 +304,7 @@ char* cling_eval_inner(TheMetaProcessor *metaProc, const char *code,bool& good) 
   if (Res != cling::Interpreter::kSuccess)
     return nullptr;
 
-  if (!V.isValid())
+  if (!V.isValid() || V.isVoid())
     return strdup("");
   return strdup(ValueToString(V).c_str());
 }

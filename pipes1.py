@@ -1,5 +1,6 @@
 import ctypes, os, sys, re
 from signal import *
+from cling_env import cling_install_dir, find_libcling_jupyter, preload_hpx
 
 delim = '$delim$'
 end = '$end$'
@@ -19,34 +20,22 @@ def clearout(sig,frame):
 
 class cling:
     def __init__(self):
-        hpx_debug = False
-        with open("/usr/hpx-libs.txt", "r") as fd:
-            for line in fd.readlines():
-                if "libhpxd.so" in line:
-                    hpx_debug = True
-                ctypes.CDLL(line.strip(),ctypes.RTLD_GLOBAL)
-        if hpx_debug:
-            flags = [b"-DHPX_DEBUG", b"-lhpxd"]
-        else:
-            flags = [b"-lhpx"]
-        self.clingJupyter = ctypes.CDLL("/usr/lib/libclingJupyter.so", mode = ctypes.RTLD_GLOBAL)
-        clingInstDir=b"/usr/lib/clang/5.0.0"
-        stdopt=b"-std=c++17"
+        extra = preload_hpx()
+        lib = find_libcling_jupyter()
+        self.clingJupyter = ctypes.CDLL(lib, mode = ctypes.RTLD_GLOBAL)
+        prefix = cling_install_dir()
+        stdopt=b"-std=c++20"
         argv = [
                         b"cling",
-                        b"-I" + clingInstDir + b"/include/",
-                        b"-std=c++17",
+                        stdopt,
+                        b"-I" + prefix.encode("utf-8") + b"/include/",
                         b"-I.",
+                        b"-L/usr/local/lib",
                         b"-L/usr/local/lib64",
-                        #b"-lboost_filesystem",
-                        #b"-lboost_program_options",
-                        #b"-lboost_system"
-                        #b"-I/usr/local/include",
-                        #b"-I/usr/include"
-            ] + flags
+            ] + extra
         argc = len(argv)
         CharPtrArrayType = ctypes.c_char_p * argc
-        llvmResourceDirCP = ctypes.c_char_p("/usr".encode('utf8'))
+        llvmResourceDirCP = ctypes.c_char_p(prefix.encode('utf8'))
         sideband_pipe, pipe_in = os.pipe()
         self.clingJupyter.cling_create.restype = my_void_p
         self.clingJupyter.cling_eval.restype = my_void_p

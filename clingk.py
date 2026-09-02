@@ -42,6 +42,9 @@ from ipykernel.ipkernel import IPythonKernel
 from ipykernel.zmqshell import ZMQInteractiveShell
 from IPython.core.profiledir import ProfileDir
 from jupyter_client.session import Session
+from cling_env import cling_install_dir, find_libcling_jupyter, preload_hpx
+import atexit
+import signal
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -166,87 +169,31 @@ class ClingKernel(Kernel):
     # Used in handle_input()
     flush_interval = Float(0.25, config=True)
 
-    std = CaselessStrEnum(default_value='c++17',
-            values = ['c++1z', 'c++17'],
-            help="C++ standard to use, either c++17, c++1z").tag(config=True);
+    std = CaselessStrEnum(default_value='c++20',
+            values = ['c++11', 'c++14', 'c++1z', 'c++17', 'c++20', 'c++2b', 'c++23'],
+            help="C++ standard to use").tag(config=True);
 
     def __init__(self, **kwargs):
         super(ClingKernel, self).__init__(**kwargs)
         self.using_hpx = False
-        clingInPath = shutil.which('cling')
-        if not clingInPath:
-            from distutils.spawn import find_executable
-            clingInPath = find_executable('cling')
-        if not clingInPath:
-            raise RuntimeError('Cannot find cling in $PATH. No cling, no fun.')
+        clingInstDir = cling_install_dir()
+        llvmResourceDir = clingInstDir
 
-        try:
-            whichCling = os.readlink(clingInPath)
-            whichCling = os.path.join(os.path.dirname(clingInPath), whichCling)
-        except OSError as e:
-            #If cling is not a symlink try a regular file
-            #readlink returns POSIX error EINVAL (22) if the
-            #argument is not a symlink
-            if e.args[0] == 22:
-                whichCling = clingInPath
-            else:
-                raise e
-
-        if whichCling:
-            clingInstDir = os.path.abspath(os.path.dirname(os.path.dirname(whichCling)))
-            llvmResourceDir = clingInstDir
-        else:
-            raise RuntimeError('cling at ' + clingInPath + ' is unusable. No cling, no fun.')
-
-
-        ####
-        hpx_debug = False
-        hpx_flags = []
-        with open("/usr/hpx-libs.txt", "r") as fd:
-            for line in fd.readlines():
-                if "libhpxd.so" in line:
-                    hpx_debug = True
-                ctypes.CDLL(line.strip(),ctypes.RTLD_GLOBAL)
-        if hpx_debug:
-            hpx_flags = [b"-DHPX_DEBUG", b"-lhpxd"]
-        else:
-            hpx_flags = [b"-lhpx"]
-        ####
-        for libFolder in ["/lib/libclingJupyter.", "/libexec/lib/libclingJupyter."]:
-            for ext in ['so', 'dylib', 'dll']:
-                libFilename = clingInstDir + libFolder + ext
-                if os.access(libFilename, os.R_OK):
-                    self.libclingJupyter = ctypes.CDLL(clingInstDir + libFolder + ext,
-                                                    mode = ctypes.RTLD_GLOBAL)
-                    break
-
-        if not getattr(self, 'libclingJupyter', None):
-            raise RuntimeError('Cannot find ' + clingInstDir + '/lib/libclingJupyter.{so,dylib,dll}')
+        hpx_flags = preload_hpx()
+        self.libclingJupyter = ctypes.CDLL(find_libcling_jupyter(),
+                                           mode=ctypes.RTLD_GLOBAL)
 
         self.libclingJupyter.cling_create.restype = my_void_p
         self.libclingJupyter.cling_eval.restype = my_void_p
         stdopt = ("-std=" + self.std).encode('utf-8')
         self.log.info("Using {}".format(stdopt.decode('utf-8')))
-        #from IPython.utils import io
-        #io.rprint("DBG: Using {}".format(stdopt.decode('utf-8')))
         argv = [
 		b"clingJupyter",
 		stdopt,
-                #b"-DHPX_DEBUG",
-                b"-DHPX_APPLICATION_EXPORTS",
-                b"-L/usr/local/lib64",
-                #b"-lhpxd",
-                b"-lboost_filesystem",
-                b"-lboost_program_options",
-                b"-lboost_system",
-                b"-lpthread",
+                b"-I.",
                 b"-I/usr/local/include/BlazeIterative",
 		b"-I" + clingInstDir.encode('utf-8') + b"/include/"
 		] + hpx_flags
-        #if os.path.exists("/usr/local/lib64/libhpx.so"):
-        #    argv += [b"-lhpx"]
-        #else:
-        #    argv += [b"-DHPX_DEBUG",b"-lhpxd"]
 
         # Environment variable CLING_OPTS used to pass arguments to cling
         extra_opts = os.getenv('CLING_OPTS')
@@ -266,6 +213,21 @@ class ClingKernel(Kernel):
 
         self.libclingJupyter.cling_complete_start.restype = my_void_p
         self.libclingJupyter.cling_complete_next.restype = my_void_p #c_char_p
+        self.libclingJupyter.cling_worker_pid.restype = ctypes.c_int
+        atexit.register(self._kill_cling_worker)
+
+    def _kill_cling_worker(self):
+        """The fork snapshot outlives SIGKILL of this process unless we reap it."""
+        try:
+            pid = self.libclingJupyter.cling_worker_pid()
+            if pid > 0:
+                os.kill(pid, signal.SIGKILL)
+        except Exception:
+            pass
+
+    def do_shutdown(self, restart):
+        self._kill_cling_worker()
+        return super(ClingKernel, self).do_shutdown(restart)
 
     def _process_stdio_data(self, pipe, name):
         """Read from the pipe, send it to IOPub as name stream."""

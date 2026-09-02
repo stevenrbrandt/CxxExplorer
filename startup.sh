@@ -1,4 +1,8 @@
 cd /root
+export PATH=/usr/local/bin:${PATH}
+export PYTHONPATH=/usr/local/python:${PYTHONPATH:-}
+export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-}
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
 # If oauth is to be used, 
 # the following variables should be

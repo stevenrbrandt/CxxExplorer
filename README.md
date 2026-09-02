@@ -1,7 +1,9 @@
 # CxxExplorer
 This repo builds a JupyterHub/Jupyter notebook server which offers an interactive C++ experience. The primary interface for this is through cling notebooks (cling is the C++ interpreter). We extend the cling notebook with certain magics, (namely %%writefile and %%bash). However, additionally, we provide a %%cling magic cell for python notebooks, and a @py11 decorator--a way to create on-the-fly C++ functions using Pybind11.
 
-To build, just uncomment the build lines in the clinet docker file below and run "docker-compose build".
+The image is Ubuntu 24.04 with **Cling 1.3** (LLVM 20) and **HPX 1.11**.
+
+To build, run `bash ./b.sh` (that script takes the CPU count from `lscpu`, not `nproc` — `OMP_NUM_THREADS=1` makes `nproc` report a single core). A full build compiles LLVM/Clang/Cling and HPX and needs tens of GB of RAM and disk.
 
 You can run the CxxExplorer as a notebook using this docker-compose.yml file:
 ```
@@ -22,6 +24,8 @@ services:
     #     BUILD_TYPE: Release
     #   context: .
     #   dockerfile: Dockerfile
+    # CPU count: pass --build-arg CPUS=$(lscpu | awk '/^CPU\(s\):/{print $2}')
+    # Do not use nproc when OMP_NUM_THREADS=1.
     image: stevenrbrandt/cxxex-src
     container_name: cxxex
     user: jovyan

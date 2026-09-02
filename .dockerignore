@@ -1,0 +1,15 @@
+.git
+__pycache__
+*.pyc
+cxxex.pdf
+etc
+rootCA.key
+rootCA.pem
+cert-info.txt
+cin-debug.txt
+build.out
+WCCM-APCOM-22
+activeharmony-4.6.0
+.repo-info.txt
+x
+x.ipynb
